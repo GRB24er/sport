@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -145,3 +146,4 @@ export async function GET(req) {
     return NextResponse.json({ error: "Failed to fetch referrals" }, { status: 500 });
   }
 }
+
