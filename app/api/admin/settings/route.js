@@ -20,21 +20,20 @@ const settingsSchema = new mongoose.Schema({
   whatsappNumber: { type: String, default: "" },
 }, { timestamps: true });
 
-const Settings = mongoose.models.Settings || mongoose.model("Settings", settingsSchema);
-
-async function getSettings() {
-  let s = await Settings.findOne({ key: "main" });
-  if (!s) s = await Settings.create({ key: "main" });
-  return s;
+function getModel() {
+  return mongoose.models.Settings || mongoose.model("Settings", settingsSchema);
 }
 
 export async function GET() {
   try {
     await connectDB();
-    const settings = await getSettings();
-    return NextResponse.json({ settings });
+    const Settings = getModel();
+    let s = await Settings.findOne({ key: "main" });
+    if (!s) s = await Settings.create({ key: "main" });
+    return NextResponse.json({ settings: s.toObject() });
   } catch (e) {
-    return NextResponse.json({ settings: {} });
+    console.error("Settings GET error:", e.message);
+    return NextResponse.json({ settings: {}, error: e.message }, { status: 500 });
   }
 }
 
@@ -43,14 +42,13 @@ export async function PATCH(req) {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     await connectDB();
+    const Settings = getModel();
     const body = await req.json();
-    delete body._id; delete body.__v; delete body.key;
+    delete body._id; delete body.__v; delete body.key; delete body.createdAt; delete body.updatedAt;
     const settings = await Settings.findOneAndUpdate({ key: "main" }, { $set: body }, { new: true, upsert: true });
-    return NextResponse.json({ settings, message: "Settings saved" });
+    return NextResponse.json({ settings: settings.toObject(), message: "Settings saved" });
   } catch (e) {
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    console.error("Settings PATCH error:", e.message);
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
-
-
-
