@@ -27,9 +27,9 @@ export default function SignupPage() {
   const FEE = ss.signupFeeGHS || FEE_DEF;
   const FEE_USD = (FEE * R).toFixed(2);
   const PROVIDERS = [
-    { ...PROVIDERS_DEF[0], number: ss.mtnNumber || PROVIDERS_DEF[0].number },
-    { ...PROVIDERS_DEF[1], number: ss.telecelNumber || PROVIDERS_DEF[1].number },
-    { ...PROVIDERS_DEF[2], number: ss.airteltigoNumber || PROVIDERS_DEF[2].number },
+    { ...PROVIDERS_DEF[0], number: ss.mtnNumber || PROVIDERS_DEF[0].number, acct: ss.mtnName || "VirtualBet GH" },
+    { ...PROVIDERS_DEF[1], number: ss.telecelNumber || PROVIDERS_DEF[1].number, acct: ss.telecelName || "VirtualBet GH" },
+    { ...PROVIDERS_DEF[2], number: ss.airteltigoNumber || PROVIDERS_DEF[2].number, acct: ss.airteltigoName || "VirtualBet GH" },
   ];
   const [showPw, setShowPw] = useState(false);
   const [provider, setProvider] = useState(null);
@@ -158,7 +158,7 @@ export default function SignupPage() {
           {/* STEP 1 */}
           {step === 1 && (<div>
             <h1 className="vb-auth-title">Create Your Account</h1>
-            <p className="vb-auth-sub">Sign up to access AI-powered predictions</p>
+            <p className="vb-auth-sub">Sign up to access winning predictions</p>
             <div className="vb-fee"><span className="vb-fee-amt">Registration Fee: GH₵{FEE}</span><span className="vb-fee-usd">(≈ ${FEE_USD} USD)</span></div>
             <form onSubmit={step1}>
               <div className="vb-field"><label className="vb-label">Full Name</label><input className="vb-inp" placeholder="e.g. Kwame Asante" value={form.name} onChange={e => upd("name", e.target.value)} /></div>
@@ -197,7 +197,7 @@ export default function SignupPage() {
               </div>
               {prov && !ddOpen && <div className="vb-pay-card" style={{background:prov.bg,border:`1px solid ${prov.border}`}}>
                 <div className="vb-pay-row"><div className="vb-pay-lbl" style={{color:prov.color}}>SEND TO</div><div className="vb-pay-val">{prov.number}</div></div>
-                <div className="vb-pay-row"><div className="vb-pay-lbl" style={{color:prov.color}}>NAME</div><div className="vb-pay-val">VirtualBet GH</div></div>
+                <div className="vb-pay-row"><div className="vb-pay-lbl" style={{color:prov.color}}>NAME</div><div className="vb-pay-val">{prov.acct}</div></div>
                 <div className="vb-pay-row"><div className="vb-pay-lbl" style={{color:prov.color}}>AMOUNT</div><div style={{display:"flex",alignItems:"baseline",gap:8}}><div className="vb-pay-val" style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:1}}>GH₵{FEE}</div><span style={{fontSize:12,color:"#555"}}>(≈ ${FEE_USD})</span></div></div>
               </div>}
             </div>
