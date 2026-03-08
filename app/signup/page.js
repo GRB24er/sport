@@ -87,16 +87,16 @@ export default function SignupPage() {
   return (
     <div className="su-root">
       <style>{`
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
-.su-root{min-height:100vh;background:#0B0D10;color:#F0F0F2;font-family:'Outfit',sans-serif;display:flex;flex-direction:column;position:relative;overflow-x:hidden}
+.su-root{min-height:100vh;background:#0B0D10;color:#F0F0F2;font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;position:relative;overflow-x:hidden}
 .su-bg{position:fixed;inset:0;z-index:0;overflow:hidden}
 .su-bg-orb{position:absolute;border-radius:50%;filter:blur(120px);opacity:.15;animation:orb 20s ease-in-out infinite}
 .su-bg-orb:nth-child(1){width:500px;height:500px;background:#E31725;top:-20%;left:-10%;animation-delay:0s}
 .su-bg-orb:nth-child(2){width:400px;height:400px;background:#0B9635;bottom:-15%;right:-10%;animation-delay:-7s}
 .su-bg-orb:nth-child(3){width:300px;height:300px;background:#D4AF37;top:50%;left:50%;animation-delay:-14s}
 @keyframes orb{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(40px,-30px) scale(1.1)}66%{transform:translate(-30px,20px) scale(.9)}}
-.su-grid{position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(227,23,37,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(227,23,37,.03) 1px,transparent 1px);background-size:60px 60px}
+.su-grid{position:fixed;inset:0;z-index:0;background-image:url(/backdrop.png);background-size:380px auto;background-repeat:repeat;opacity:.03}
 .su-cnt{position:relative;z-index:1;flex:1;display:flex;align-items:center;justify-content:center;padding:32px 20px}
 .su-card{width:100%;max-width:480px;position:relative}
 .su-inner{background:rgba(18,20,26,.85);backdrop-filter:blur(40px);border:1px solid rgba(255,255,255,.06);border-radius:28px;padding:40px 32px;position:relative;overflow:hidden}
@@ -106,17 +106,17 @@ export default function SignupPage() {
 .su-bar{flex:1;height:3px;border-radius:2px;background:#1E2028;transition:all .4s cubic-bezier(.4,0,.2,1)}.su-bar.on{background:linear-gradient(90deg,#E31725,#D4AF37)}
 .su-step{text-align:center;margin-bottom:8px}
 .su-step span{font-size:10px;font-weight:700;letter-spacing:3px;color:#333;text-transform:uppercase;background:rgba(227,23,37,.08);padding:4px 16px;border-radius:20px;border:1px solid rgba(227,23,37,.12)}
-.su-h{font-size:28px;font-weight:800;text-align:center;margin-bottom:4px;letter-spacing:-.5px}
+.su-h{font-size:32px;font-weight:800;font-family:'Bebas Neue',sans-serif;letter-spacing:2px;text-align:center;margin-bottom:4px}
 .su-sub{font-size:14px;color:#555;text-align:center;margin-bottom:24px;line-height:1.6}
 .su-fee{display:flex;align-items:center;justify-content:center;gap:12px;background:rgba(11,150,53,.06);border:1px solid rgba(11,150,53,.15);border-radius:14px;padding:14px 20px;margin-bottom:28px}
-.su-fee-a{font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:#0B9635;letter-spacing:1px}
+.su-fee-a{font-family:'Bebas Neue',monospace;font-size:22px;font-weight:700;color:#0B9635;letter-spacing:1px}
 .su-fee-u{font-size:12px;color:#555}
 .su-field{margin-bottom:16px}
 .su-lbl{display:block;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#444;margin-bottom:6px}
-.su-inp{width:100%;padding:14px 16px;background:rgba(11,13,16,.6);border:1px solid #1E2028;border-radius:12px;color:#F0F0F2;font-size:14px;font-family:'Outfit';outline:none;transition:all .2s}.su-inp:focus{border-color:#E31725;box-shadow:0 0 0 3px rgba(227,23,37,.08)}.su-inp::placeholder{color:#2A2D34}
-.su-pw{position:relative}.su-pw .su-inp{padding-right:56px}.su-pw-btn{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;color:#555;cursor:pointer;font-size:12px;font-family:'Outfit';font-weight:600}
+.su-inp{width:100%;padding:14px 16px;background:rgba(11,13,16,.6);border:1px solid #1E2028;border-radius:12px;color:#F0F0F2;font-size:14px;font-family:'DM Sans';outline:none;transition:all .2s}.su-inp:focus{border-color:#E31725;box-shadow:0 0 0 3px rgba(227,23,37,.08)}.su-inp::placeholder{color:#2A2D34}
+.su-pw{position:relative}.su-pw .su-inp{padding-right:56px}.su-pw-btn{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;color:#555;cursor:pointer;font-size:12px;font-family:'DM Sans';font-weight:600}
 .su-err{background:rgba(227,23,37,.06);border:1px solid rgba(227,23,37,.15);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#E31725;font-weight:600;display:flex;align-items:center;gap:8px}
-.su-btn{width:100%;padding:16px;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Outfit';transition:all .2s;position:relative;overflow:hidden}
+.su-btn{width:100%;padding:16px;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans';transition:all .2s;position:relative;overflow:hidden}
 .su-btn:disabled{opacity:.4;cursor:not-allowed}.su-btn:active{transform:scale(.98)}
 .su-btn-r{background:#E31725;color:#fff}.su-btn-r:hover:not(:disabled){box-shadow:0 8px 30px rgba(227,23,37,.3);transform:translateY(-1px)}
 .su-btn-g{background:#0B9635;color:#fff}.su-btn-g:hover:not(:disabled){box-shadow:0 8px 30px rgba(11,150,53,.3);transform:translateY(-1px)}
@@ -143,7 +143,7 @@ export default function SignupPage() {
 .pay-row{display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid rgba(255,255,255,.06)}.pay-row:last-child{border-bottom:none}
 .pay-lbl{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.5}
 .pay-val{font-family:'Space Mono',monospace;font-size:18px;font-weight:700;letter-spacing:1px;display:flex;align-items:center;gap:10px}
-.pay-copy{padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:'Outfit';transition:all .2s;letter-spacing:.5px}
+.pay-copy{padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans';transition:all .2s;letter-spacing:.5px}
 .pay-copy:hover{background:rgba(255,255,255,.12)}.pay-copy.ok{background:rgba(11,150,53,.2);border-color:rgba(11,150,53,.3);color:#0B9635}
 
 /* TIMER */
