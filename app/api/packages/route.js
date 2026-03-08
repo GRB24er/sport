@@ -5,28 +5,26 @@ import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
+import Settings from "@/models/Settings";
 
-const PKG_PRICES_DEFAULT = { gold: 250, platinum: 500, diamond: 1000 };
+const PKG_PRICES_DEF = { gold: 250, platinum: 500, diamond: 1000 };
 const PKG_NAMES = { gold: "Gold", platinum: "Platinum", diamond: "Diamond" };
 const GAME_NAMES = { "instant-virtual": "Instant Virtual", "egames": "eGames" };
 const PROV_NAMES = { mtn: "MTN MoMo", telecel: "Telecel Cash", airteltigo: "AirtelTigo" };
-
-async function getPkgPrices() {
-  try {
-    const mongoose = (await import("mongoose")).default;
-    const db = mongoose.connection.db;
-    if (!db) return PKG_PRICES_DEFAULT;
-    const s = await db.collection("settings").findOne({ key: "main" });
-    if (!s) return PKG_PRICES_DEFAULT;
-    return { gold: s.goldPrice || 250, platinum: s.platinumPrice || 500, diamond: s.diamondPrice || 1000 };
-  } catch (e) { return PKG_PRICES_DEFAULT; }
-}
 
 function mToObj(m) {
   if (!m) return {};
   if (m instanceof Map) return Object.fromEntries(m);
   if (typeof m.toJSON === "function") return m.toJSON();
   return typeof m === "object" ? { ...m } : {};
+}
+
+async function getPkgPrices() {
+  try {
+    const s = await Settings.findOne({ key: "main" }).lean();
+    if (!s) return PKG_PRICES_DEF;
+    return { gold: s.goldPrice || 250, platinum: s.platinumPrice || 500, diamond: s.diamondPrice || 1000 };
+  } catch (e) { return PKG_PRICES_DEF; }
 }
 
 // POST — user submits per-game package purchase
@@ -36,9 +34,9 @@ export async function POST(req) {
     if (!session || session.user.role === "admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     await connectDB();
+    const PKG_PRICES = await getPkgPrices();
     const { gameId, packageId, paymentProvider, referenceNumber, senderName } = await req.json();
 
-    const PKG_PRICES = await getPkgPrices();
     if (!gameId || !packageId || !paymentProvider || !referenceNumber) {
       return NextResponse.json({ error: "All fields required" }, { status: 400 });
     }
@@ -48,33 +46,22 @@ export async function POST(req) {
     const user = await User.findById(session.user.id);
     if (!user || user.status !== "approved") return NextResponse.json({ error: "Account not active" }, { status: 403 });
 
-    // Check existing
     const gp = mToObj(user.gamePackages);
     if (gp[gameId]) return NextResponse.json({ error: `You already have ${PKG_NAMES[gp[gameId].package]} for ${GAME_NAMES[gameId]}` }, { status: 400 });
 
     const pgp = mToObj(user.pendingGamePackages);
     if (pgp[gameId]) return NextResponse.json({ error: `You already have a pending request for ${GAME_NAMES[gameId]}` }, { status: 400 });
 
-    // Store pending — use direct MongoDB update to avoid Map issues
     const updateKey = `pendingGamePackages.${gameId}`;
     await User.updateOne({ _id: user._id }, {
-      $set: {
-        [updateKey]: {
-          package: packageId,
-          referenceNumber,
-          paymentProvider,
-          senderName: senderName || "",
-          date: new Date(),
-        }
-      }
+      $set: { [updateKey]: { package: packageId, referenceNumber, paymentProvider, senderName: senderName || "", date: new Date() } }
     });
 
     const provLabel = PROV_NAMES[paymentProvider] || paymentProvider;
     await Notification.create({
       type: "payment",
       message: `📦 ${GAME_NAMES[gameId]} — ${user.name} (${user.phone}) wants ${PKG_NAMES[packageId]} (GH₵${PKG_PRICES[packageId]}). ${provLabel}. Ref: ${referenceNumber}${senderName ? `. Sender: ${senderName}` : ""}`,
-      forAdmin: true,
-      relatedUserId: user._id,
+      forAdmin: true, relatedUserId: user._id,
       metadata: { type: "package_purchase", gameId, packageId, paymentProvider, referenceNumber, senderName },
     });
 
@@ -107,21 +94,12 @@ export async function GET(req) {
       for (const [gameId, r] of Object.entries(pending)) {
         if (r && r.package) {
           requests.push({
-            userId: u._id.toString(),
-            userName: u.name,
-            userPhone: u.phone,
-            userEmail: u.email,
-            sportyBetId: u.sportyBetId,
-            gameId,
-            gameName: GAME_NAMES[gameId] || gameId,
-            packageId: r.package,
-            packageName: PKG_NAMES[r.package] || r.package,
-            packagePrice: PKG_PRICES[r.package] || 0,
-            referenceNumber: r.referenceNumber,
-            paymentProvider: r.paymentProvider,
+            userId: u._id.toString(), userName: u.name, userPhone: u.phone, userEmail: u.email, sportyBetId: u.sportyBetId,
+            gameId, gameName: GAME_NAMES[gameId] || gameId,
+            packageId: r.package, packageName: PKG_NAMES[r.package] || r.package, packagePrice: PKG_PRICES[r.package] || 0,
+            referenceNumber: r.referenceNumber, paymentProvider: r.paymentProvider,
             providerName: PROV_NAMES[r.paymentProvider] || r.paymentProvider,
-            senderName: r.senderName || "",
-            date: r.date,
+            senderName: r.senderName || "", date: r.date,
           });
         }
       }
@@ -142,9 +120,9 @@ export async function PATCH(req) {
     if (!session || session.user.role !== "admin") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     await connectDB();
+    const PKG_PRICES = await getPkgPrices();
     const { userId, gameId, action } = await req.json();
 
-    const PKG_PRICES = await getPkgPrices();
     if (!userId || !gameId || !["approve", "reject"].includes(action)) {
       return NextResponse.json({ error: "userId, gameId, and action required" }, { status: 400 });
     }
@@ -161,7 +139,6 @@ export async function PATCH(req) {
     const pkgPrice = PKG_PRICES[req2.package] || 0;
 
     if (action === "approve") {
-      // Activate game package + remove pending — use direct MongoDB update
       await User.updateOne({ _id: user._id }, {
         $set: { [`gamePackages.${gameId}`]: { package: req2.package, predictionsUsed: 0, activatedAt: new Date() } },
         $unset: { [`pendingGamePackages.${gameId}`]: "" },
@@ -170,7 +147,6 @@ export async function PATCH(req) {
 
       await Notification.create({ type: "system", message: `🎉 Your ${pkgName} for ${gameName} is activated! Go play!`, forUserId: user._id });
       await Notification.create({ type: "system", message: `✅ ${pkgName} for ${gameName} activated for ${user.name}. Revenue: GH₵${pkgPrice}`, forAdmin: true });
-
       return NextResponse.json({ message: `${pkgName} for ${gameName} activated` });
     }
 
@@ -184,4 +160,3 @@ export async function PATCH(req) {
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
-

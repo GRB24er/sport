@@ -6,26 +6,24 @@ import connectDB from "@/lib/mongodb";
 import Upload from "@/models/Upload";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
+import Settings from "@/models/Settings";
 
 const PKG_LIMITS_DEF = { gold: 1, platinum: 2, diamond: 4 };
 const GAME_NAMES = { "instant-virtual": "Instant Virtual", "egames": "eGames" };
-
-async function getPkgLimits() {
-  try {
-    const mongoose = (await import("mongoose")).default;
-    const db = mongoose.connection?.db;
-    if (!db) return PKG_LIMITS_DEF;
-    const s = await db.collection("settings").findOne({ key: "main" });
-    if (!s) return PKG_LIMITS_DEF;
-    return { gold: s.goldMaxPreds || 1, platinum: s.platinumMaxPreds || 2, diamond: s.diamondMaxPreds || 4 };
-  } catch (e) { return PKG_LIMITS_DEF; }
-}
 
 function mToObj(m) {
   if (!m) return {};
   if (m instanceof Map) return Object.fromEntries(m);
   if (typeof m.toJSON === "function") return m.toJSON();
   return typeof m === "object" ? { ...m } : {};
+}
+
+async function getPkgLimits() {
+  try {
+    const s = await Settings.findOne({ key: "main" }).lean();
+    if (!s) return PKG_LIMITS_DEF;
+    return { gold: s.goldMaxPreds || 1, platinum: s.platinumMaxPreds || 2, diamond: s.diamondMaxPreds || 4 };
+  } catch (e) { return PKG_LIMITS_DEF; }
 }
 
 // POST — user uploads screenshot (uses 1 credit)
@@ -59,17 +57,11 @@ export async function POST(req) {
       return NextResponse.json({ error: "EXHAUSTED", message: "Package expired. Subscribe again." }, { status: 429 });
     }
 
-    // Save upload
     const upload = await Upload.create({
-      userId: user._id,
-      userName: user.name,
-      userPhone: user.phone,
-      gameId: gId,
-      imageData: imageBase64,
-      status: "pending",
+      userId: user._id, userName: user.name, userPhone: user.phone,
+      gameId: gId, imageData: imageBase64, status: "pending",
     });
 
-    // Use 1 credit
     const newUsed = used + 1;
     const exhausted = newUsed >= maxPreds;
 
@@ -79,7 +71,6 @@ export async function POST(req) {
       await User.updateOne({ _id: user._id }, { $set: { [`gamePackages.${gId}.predictionsUsed`]: newUsed } });
     }
 
-    // Notify admin
     await Notification.create({
       type: "system",
       message: `📸 ${user.name} (${user.phone}) uploaded screenshot for ${GAME_NAMES[gId]} — credit ${newUsed}/${maxPreds}${exhausted ? " — LAST CREDIT" : ""}`,
@@ -87,7 +78,7 @@ export async function POST(req) {
     });
 
     return NextResponse.json({
-      message: "Screenshot uploaded! Admin will analyze and send your prediction shortly.",
+      message: "Screenshot uploaded!",
       upload: { _id: upload._id, status: "pending", createdAt: upload.createdAt },
       predictionsUsed: newUsed, maxPredictions: maxPreds, exhausted,
     });
@@ -114,7 +105,6 @@ export async function GET(req) {
       return NextResponse.json({ uploads });
     }
 
-    // User — get their own uploads
     const uploads = await Upload.find({ userId: session.user.id }).sort({ createdAt: -1 }).limit(20).lean();
     return NextResponse.json({ uploads });
   } catch (error) {
@@ -133,37 +123,25 @@ export async function PATCH(req) {
 
     if (!uploadId) return NextResponse.json({ error: "uploadId required" }, { status: 400 });
 
-    // Delete
     if (action === "delete") {
       await Upload.findByIdAndDelete(uploadId);
       return NextResponse.json({ message: "Deleted" });
     }
 
-    // Reject
     if (action === "reject") {
       const upload = await Upload.findByIdAndUpdate(uploadId, { status: "rejected", adminNote: adminNote || "Unclear screenshot" }, { new: true });
       if (!upload) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-      await Notification.create({
-        type: "system",
-        message: `❌ Your screenshot was rejected: ${adminNote || "Unclear image"}. Please upload a clearer one.`,
-        forUserId: upload.userId,
-      });
+      await Notification.create({ type: "system", message: `❌ Your screenshot was rejected: ${adminNote || "Unclear image"}. Please upload a clearer one.`, forUserId: upload.userId });
       return NextResponse.json({ message: "Rejected" });
     }
 
-    // Respond with prediction (multiple matches)
     if (!matches?.length || !matches.some(m => m.homeTeam && m.awayTeam)) {
       return NextResponse.json({ error: "At least one match with teams required" }, { status: 400 });
     }
 
     const cleanMatches = matches.filter(m => m.homeTeam && m.awayTeam).map(m => ({
-      homeTeam: m.homeTeam,
-      awayTeam: m.awayTeam,
-      matchTime: m.matchTime || "",
-      picks: (m.picks || []).filter(p => p.pick).map(p => ({
-        market: p.market, pick: p.pick, odd: parseFloat(p.odd) || 1.5,
-      })),
+      homeTeam: m.homeTeam, awayTeam: m.awayTeam, matchTime: m.matchTime || "",
+      picks: (m.picks || []).filter(p => p.pick).map(p => ({ market: p.market, pick: p.pick, odd: parseFloat(p.odd) || 1.5 })),
     }));
 
     let allOdds = [];
@@ -171,12 +149,8 @@ export async function PATCH(req) {
     const totalOdd = parseFloat(allOdds.reduce((a, o) => a * o, 1).toFixed(2));
 
     const upload = await Upload.findByIdAndUpdate(uploadId, {
-      status: "responded",
-      matches: cleanMatches,
-      totalOdd,
-      adminNote: adminNote || "",
-      sportyBetLink: sportyBetLink || "",
-      respondedAt: new Date(),
+      status: "responded", matches: cleanMatches, totalOdd,
+      adminNote: adminNote || "", sportyBetLink: sportyBetLink || "", respondedAt: new Date(),
     }, { new: true });
 
     if (!upload) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -193,4 +167,3 @@ export async function PATCH(req) {
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
-

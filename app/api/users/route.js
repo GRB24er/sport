@@ -5,26 +5,16 @@ import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
+import Settings from "@/models/Settings";
 
 const SIGNUP_FEE_DEF = 50;
 
-async function getSignupFee() {
-  try {
-    const mongoose = (await import("mongoose")).default;
-    const db = mongoose.connection?.db;
-    if (!db) return SIGNUP_FEE_DEF;
-    const s = await db.collection("settings").findOne({ key: "main" });
-    return s?.signupFeeGHS || SIGNUP_FEE_DEF;
-  } catch (e) { return SIGNUP_FEE_DEF; }
-}
-
-// POST — Register (registration fee only, no package)
+// POST — Register
 export async function POST(req) {
   try {
     await connectDB();
     const body = await req.json();
-    const SIGNUP_FEE = await getSignupFee();
-    const { name, email, phone, password, referenceNumber, paymentProvider, referralUsed } = body;
+    const { name, email, phone, password, referenceNumber, paymentProvider, senderName, referralUsed } = body;
 
     if (!name || !email || !phone || !password || !referenceNumber) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
@@ -32,6 +22,13 @@ export async function POST(req) {
     if (password.length < 6) {
       return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
     }
+
+    // Get signup fee from settings
+    let SIGNUP_FEE = SIGNUP_FEE_DEF;
+    try {
+      const s = await Settings.findOne({ key: "main" }).lean();
+      if (s?.signupFeeGHS) SIGNUP_FEE = s.signupFeeGHS;
+    } catch (e) {}
 
     const existing = await User.findOne({ $or: [{ phone }, { email }] });
     if (existing) {
@@ -59,10 +56,10 @@ export async function POST(req) {
 
     await Notification.create({
       type: "payment",
-      message: `${name} (${phone}) submitted registration: ${referenceNumber} — GH₵${SIGNUP_FEE}${referralUsed ? ` | Referred by: ${referralUsed}` : ""}`,
+      message: `${name} (${phone}) submitted registration: ${referenceNumber} — GH₵${SIGNUP_FEE}${senderName ? ` | Sender: ${senderName}` : ""}${referralUsed ? ` | Referred by: ${referralUsed}` : ""}`,
       forAdmin: true,
       relatedUserId: user._id,
-      metadata: { referenceNumber, phone, paymentProvider, referralUsed },
+      metadata: { referenceNumber, phone, paymentProvider, senderName, referralUsed },
     });
 
     return NextResponse.json({
@@ -95,4 +92,3 @@ export async function GET(req) {
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
 }
-

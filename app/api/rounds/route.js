@@ -10,12 +10,12 @@ import Notification from "@/models/Notification";
 const GAME_NAMES = { "instant-virtual": "Instant Virtual", "egames": "eGames" };
 const PKG_LIMITS_DEF = { gold: 1, platinum: 2, diamond: 4 };
 
+import Settings from "@/models/Settings";
+
 async function getPkgLimits() {
   try {
-    const mongoose = (await import("mongoose")).default;
-    const db = mongoose.connection?.db;
-    if (!db) return PKG_LIMITS_DEF;
-    const s = await db.collection("settings").findOne({ key: "main" });
+    
+    const s = await Settings.findOne({ key: "main" }).lean();
     if (!s) return PKG_LIMITS_DEF;
     return { gold: s.goldMaxPreds || 1, platinum: s.platinumMaxPreds || 2, diamond: s.diamondMaxPreds || 4 };
   } catch (e) { return PKG_LIMITS_DEF; }
@@ -274,4 +274,3 @@ export async function PATCH(req) {
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
-

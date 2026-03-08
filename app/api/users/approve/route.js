@@ -5,18 +5,9 @@ import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
+import Settings from "@/models/Settings";
 
 const REFERRAL_BONUS_DEF = 10;
-
-async function getReferralBonus() {
-  try {
-    const mongoose = (await import("mongoose")).default;
-    const db = mongoose.connection?.db;
-    if (!db) return REFERRAL_BONUS_DEF;
-    const s = await db.collection("settings").findOne({ key: "main" });
-    return s?.referralBonusGHS || REFERRAL_BONUS_DEF;
-  } catch (e) { return REFERRAL_BONUS_DEF; }
-}
 
 export async function POST(req) {
   try {
@@ -34,7 +25,8 @@ export async function POST(req) {
     user.status = "approved";
     await user.save();
 
-    const REFERRAL_BONUS = await getReferralBonus();
+    let REFERRAL_BONUS = REFERRAL_BONUS_DEF;
+    try { const s = await Settings.findOne({ key: "main" }).lean(); if (s?.referralBonusGHS) REFERRAL_BONUS = s.referralBonusGHS; } catch (e) {}
 
     if (user.referredBy) {
       const referrer = await User.findOne({ referralCode: user.referredBy, status: "approved" });
@@ -43,25 +35,14 @@ export async function POST(req) {
         referrer.referralTotalEarned = (referrer.referralTotalEarned || 0) + REFERRAL_BONUS;
         referrer.referralCount = (referrer.referralCount || 0) + 1;
         await referrer.save();
-
-        await Notification.create({
-          type: "referral",
-          message: `🎉 You earned GH₵${REFERRAL_BONUS} referral bonus! ${user.name} just got approved.`,
-          forUserId: referrer._id,
-        });
+        await Notification.create({ type: "referral", message: `🎉 You earned GH₵${REFERRAL_BONUS} referral bonus! ${user.name} just got approved.`, forUserId: referrer._id });
       }
     }
 
-    await Notification.create({
-      type: "approval",
-      message: `✅ Your account has been approved! Welcome to VirtualBet.`,
-      forUserId: user._id,
-    });
-
+    await Notification.create({ type: "approval", message: `✅ Your account has been approved! Welcome to VirtualBet.`, forUserId: user._id });
     return NextResponse.json({ message: `${user.name} approved` });
   } catch (e) {
     console.error("Approve error:", e);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
-
