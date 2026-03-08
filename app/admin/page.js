@@ -72,7 +72,7 @@ export default function AdminDash() {
       setUploads(up.uploads||[]);
       setNotifs(n.notifications||[]);
       setRefData(rd||{ usersWithCodes:[], allReferred:[], stats:{} });
-      if(st?.settings) { setSettings(st.settings); setSettingsForm(st.settings); }
+      if(st?.settings) { setSettings(st.settings); if(!settingsForm) setSettingsForm(st.settings); }
       setBroadcasts(br?.broadcasts||[]);
       setSupportThreads(sp?.threads||[]);
       setSupportUnread(sp?.totalUnread||0);
@@ -219,8 +219,10 @@ export default function AdminDash() {
   const saveSettings = async () => {
     if(!settingsForm) return;
     setSaving(true);
-    await fetch("/api/admin/settings",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(settingsForm)});
-    setSaving(false); load();
+    const res = await fetch("/api/admin/settings",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(settingsForm)});
+    const data = await res.json();
+    if(data.settings) { setSettings(data.settings); setSettingsForm(data.settings); }
+    setSaving(false);
   };
   const sendBroadcast = async () => {
     if(!broadcastForm.body.trim()) return;
