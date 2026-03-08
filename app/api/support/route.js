@@ -3,29 +3,9 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
-import mongoose from "mongoose";
 import User from "@/models/User";
+import { SupportThread, SupportMessage } from "@/models/Support";
 
-const messageSchema = new mongoose.Schema({
-  threadId: { type: mongoose.Schema.Types.ObjectId, ref: "SupportThread", required: true, index: true },
-  sender: { type: String, enum: ["user", "admin"], required: true },
-  senderName: { type: String, default: "" },
-  body: { type: String, required: true },
-  read: { type: Boolean, default: false },
-}, { timestamps: true });
-
-const threadSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
-  lastMessage: { type: String, default: "" },
-  lastDate: { type: Date, default: Date.now },
-  adminUnread: { type: Number, default: 0 },
-  userUnread: { type: Number, default: 0 },
-}, { timestamps: true });
-
-const SupportThread = mongoose.models.SupportThread || mongoose.model("SupportThread", threadSchema);
-const SupportMessage = mongoose.models.SupportMessage || mongoose.model("SupportMessage", messageSchema);
-
-// GET — admin: all threads | user: their thread messages
 export async function GET(req) {
   try {
     const session = await getServerSession(authOptions);
@@ -53,7 +33,6 @@ export async function GET(req) {
       return NextResponse.json({ threads: enriched, totalUnread });
     }
 
-    // User — get their messages
     let thread = await SupportThread.findOne({ userId: session.user.id });
     if (!thread) return NextResponse.json({ messages: [], threadId: null });
     const messages = await SupportMessage.find({ threadId: thread._id }).sort({ createdAt: 1 }).lean();
@@ -66,7 +45,6 @@ export async function GET(req) {
   }
 }
 
-// POST — send message
 export async function POST(req) {
   try {
     const session = await getServerSession(authOptions);
@@ -75,16 +53,13 @@ export async function POST(req) {
     const { body, threadId } = await req.json();
     if (!body?.trim()) return NextResponse.json({ error: "Message required" }, { status: 400 });
 
-    const isAdmin = session.user.role === "admin";
-
-    if (isAdmin) {
+    if (session.user.role === "admin") {
       if (!threadId) return NextResponse.json({ error: "threadId required" }, { status: 400 });
       await SupportMessage.create({ threadId, sender: "admin", senderName: "Admin", body });
       await SupportThread.updateOne({ _id: threadId }, { lastMessage: body, lastDate: new Date(), $inc: { userUnread: 1 }, adminUnread: 0 });
       return NextResponse.json({ message: "Sent" });
     }
 
-    // User sending
     let thread = await SupportThread.findOne({ userId: session.user.id });
     if (!thread) thread = await SupportThread.create({ userId: session.user.id });
     await SupportMessage.create({ threadId: thread._id, sender: "user", senderName: session.user.name || "User", body });
@@ -95,4 +70,3 @@ export async function POST(req) {
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
-

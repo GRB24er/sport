@@ -3,18 +3,9 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
-import mongoose from "mongoose";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
-
-const broadcastSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  message: { type: String, required: true },
-  sentTo: { type: Number, default: 0 },
-  sentBy: { type: String, default: "Admin" },
-}, { timestamps: true });
-
-const Broadcast = mongoose.models.Broadcast || mongoose.model("Broadcast", broadcastSchema);
+import Broadcast from "@/models/Broadcast";
 
 export async function GET() {
   try {
@@ -35,12 +26,9 @@ export async function POST(req) {
     if (!title || !message) return NextResponse.json({ error: "Title and message required" }, { status: 400 });
 
     const users = await User.find({ status: "approved" }).select("_id").lean();
-
     if (users.length > 0) {
       await Notification.insertMany(users.map(u => ({
-        type: "system",
-        message: `📢 ${title}: ${message}`,
-        forUserId: u._id,
+        type: "system", message: `📢 ${title}: ${message}`, forUserId: u._id,
       })));
     }
 
@@ -59,11 +47,9 @@ export async function PATCH(req) {
     await connectDB();
     const { broadcastId } = await req.json();
     if (!broadcastId) return NextResponse.json({ error: "broadcastId required" }, { status: 400 });
-    const Broadcast = mongoose.models.Broadcast;
-    if (Broadcast) await Broadcast.findByIdAndDelete(broadcastId);
+    await Broadcast.findByIdAndDelete(broadcastId);
     return NextResponse.json({ message: "Deleted" });
   } catch (e) {
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
-
