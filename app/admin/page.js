@@ -57,7 +57,7 @@ export default function AdminDash() {
     setRefreshing(true);
     try {
       const [u,p,up,n,rd,st,br,sp,pkr] = await Promise.all([
-        fetch("/api/users?status=all").then(r=>r.json()),
+        fetch("/api/users?status=all&limit=200").then(r=>r.json()),
         fetch("/api/rounds").then(r=>r.json()),
         fetch("/api/uploads").then(r=>r.json()),
         fetch("/api/notifications").then(r=>r.json()),

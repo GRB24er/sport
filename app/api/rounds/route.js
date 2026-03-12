@@ -127,10 +127,10 @@ export async function GET(req) {
     }
 
     // User — only live rounds for subscribed games
-    const user = await User.findById(session.user.id);
+    const user = await User.findById(session.user.id).select("gamePackages status").lean();
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const gp = mToObj(user.gamePackages);
+    const gp = user.gamePackages || {};
     const subscribedGames = Object.keys(gp);
 
     if (subscribedGames.length === 0) {
@@ -214,7 +214,7 @@ export async function PATCH(req) {
     const { roundId } = body;
     if (!roundId) return NextResponse.json({ error: "roundId required" }, { status: 400 });
 
-    const round = await Round.findById(roundId);
+    const round = await Round.findById(roundId).lean();
     if (!round || round.status !== "live") return NextResponse.json({ error: "Round not available" }, { status: 404 });
 
     const user = await User.findById(session.user.id);
@@ -240,16 +240,27 @@ export async function PATCH(req) {
       return NextResponse.json({ error: "EXHAUSTED", message: "Package expired. Subscribe again." }, { status: 429 });
     }
 
-    // Claim the round
-    await Round.updateOne({ _id: round._id }, { $addToSet: { claimedBy: userId } });
+    // ATOMIC: Claim the round only if not already claimed (prevents race condition)
+    const claimResult = await Round.findOneAndUpdate(
+      { _id: round._id, claimedBy: { $ne: userId } },
+      { $addToSet: { claimedBy: userId } },
+      { new: true }
+    );
+    if (!claimResult) {
+      return NextResponse.json({ error: "Already claimed" }, { status: 400 });
+    }
 
     const newUsed = used + 1;
     const exhausted = newUsed >= maxPreds;
 
+    // ATOMIC: Increment predictionsUsed and check limit atomically
     if (exhausted) {
       await User.updateOne({ _id: user._id }, { $unset: { [`gamePackages.${gameId}`]: "" } });
     } else {
-      await User.updateOne({ _id: user._id }, { $set: { [`gamePackages.${gameId}.predictionsUsed`]: newUsed } });
+      await User.updateOne(
+        { _id: user._id, [`gamePackages.${gameId}.predictionsUsed`]: used },
+        { $set: { [`gamePackages.${gameId}.predictionsUsed`]: newUsed } }
+      );
     }
 
     const gameName = GAME_NAMES[gameId] || gameId;

@@ -19,17 +19,16 @@ export async function GET(req, { params }) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     await connectDB();
-    const userDoc = await User.findById(params.id).select("-password").exec();
-    if (!userDoc) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    const user = await User.findById(params.id).select("-password").lean();
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     if (session.user.role !== "admin" && session.user.id !== params.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const user = userDoc.toObject();
-    // Properly convert Maps to plain objects
-    user.gamePackages = mToObj(userDoc.gamePackages);
-    user.pendingGamePackages = mToObj(userDoc.pendingGamePackages);
+    // Ensure Maps are plain objects with .lean()
+    user.gamePackages = user.gamePackages || {};
+    user.pendingGamePackages = user.pendingGamePackages || {};
 
     return NextResponse.json({ user });
   } catch (error) {

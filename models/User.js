@@ -18,7 +18,10 @@ const pendingRequestSchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, trim: true, lowercase: true },
+    email: {
+      type: String, required: true, trim: true, lowercase: true,
+      match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Please enter a valid email address"],
+    },
     phone: { type: String, required: true, unique: true, trim: true },
     password: { type: String, required: true, minlength: 6, select: false },
 
@@ -46,6 +49,12 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// === DATABASE INDEXES for fast queries ===
+userSchema.index({ email: 1 }, { unique: true });
+userSchema.index({ status: 1, createdAt: -1 });
+userSchema.index({ referralCode: 1 }, { sparse: true });
+userSchema.index({ referredBy: 1 }, { sparse: true });
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();

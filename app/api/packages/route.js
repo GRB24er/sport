@@ -86,11 +86,14 @@ export async function GET(req) {
 
     await connectDB();
     const PKG_PRICES = await getPkgPrices();
-    const users = await User.find({}).select("-password").exec();
+    // Only fetch users that actually have pending packages (avoids N+1 on all users)
+    const users = await User.find({
+      "pendingGamePackages": { $exists: true, $ne: {} }
+    }).select("name phone email sportyBetId pendingGamePackages").lean();
 
     const requests = [];
     for (const u of users) {
-      const pending = mToObj(u.pendingGamePackages);
+      const pending = u.pendingGamePackages || {};
       for (const [gameId, r] of Object.entries(pending)) {
         if (r && r.package) {
           requests.push({

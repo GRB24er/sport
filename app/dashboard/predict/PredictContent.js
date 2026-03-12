@@ -33,14 +33,19 @@ export default function PredictPage() {
 
   useEffect(()=>{if(status==="unauthenticated")router.push("/login");},[status]);
 
+  const isFirstLoad=useRef(true);
   const loadAll=async()=>{
     if(!session?.user?.id||session.user.id==="admin") return;
-    setLoading(true);
+    // Only show loading spinner on first load, not polling refreshes
+    if(isFirstLoad.current) setLoading(true);
     try{
-      const uR=await fetch(`/api/users/${session.user.id}`);
+      const [uR,sR]=await Promise.all([
+        fetch(`/api/users/${session.user.id}`),
+        fetch("/api/admin/settings"),
+      ]);
       if(uR.ok){const d=await uR.json();setUserData(d.user);}
+      else if(isFirstLoad.current){setError("Failed to load your data. Please refresh.");}
 
-      const sR=await fetch("/api/admin/settings");
       if(sR.ok){const d=await sR.json();if(d.settings)setSiteSettings(d.settings);}
 
       if(isIV){
@@ -50,12 +55,16 @@ export default function PredictPage() {
         const rR=await fetch(`/api/rounds?gameId=${gameId}`);
         if(rR.ok){const d=await rR.json();setRounds(d.rounds||[]);}
       }
-    }catch(e){}
+    }catch(e){
+      if(isFirstLoad.current) setError("Network error. Check your connection.");
+    }
     setLoading(false);
+    isFirstLoad.current=false;
   };
 
-  useEffect(()=>{loadAll();},[session,gameId]);
-  useEffect(()=>{if(!session?.user?.id)return;const i=setInterval(loadAll,20000);return()=>clearInterval(i);},[session,gameId]);
+  useEffect(()=>{isFirstLoad.current=true;loadAll();},[session,gameId]);
+  // Poll every 45s instead of 20s to reduce DB load
+  useEffect(()=>{if(!session?.user?.id)return;const i=setInterval(loadAll,45000);return()=>clearInterval(i);},[session,gameId]);
 
   // Instant Virtual — upload screenshot
   const handleFile=(e)=>{

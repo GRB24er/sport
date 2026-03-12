@@ -34,14 +34,16 @@ export async function POST(req) {
     if (user.status !== "approved") return NextResponse.json({ error: "User must be approved first" }, { status: 400 });
     if (user.referralCode) return NextResponse.json({ error: `User already has code: ${user.referralCode}` }, { status: 400 });
 
-    // Generate unique code (retry if collision)
+    // Generate unique code with proper collision handling
     let code;
-    let attempts = 0;
-    while (attempts < 10) {
+    let isUnique = false;
+    for (let attempts = 0; attempts < 20; attempts++) {
       code = generateCode();
-      const exists = await User.findOne({ referralCode: code });
-      if (!exists) break;
-      attempts++;
+      const exists = await User.findOne({ referralCode: code }).select("_id").lean();
+      if (!exists) { isUnique = true; break; }
+    }
+    if (!isUnique) {
+      return NextResponse.json({ error: "Could not generate unique code. Please try again." }, { status: 500 });
     }
 
     user.referralCode = code;

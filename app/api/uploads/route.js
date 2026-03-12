@@ -57,19 +57,26 @@ export async function POST(req) {
       return NextResponse.json({ error: "EXHAUSTED", message: "Package expired. Subscribe again." }, { status: 429 });
     }
 
+    // ATOMIC: Increment credit FIRST to prevent race condition (two concurrent uploads)
+    const newUsed = used + 1;
+    const exhausted = newUsed >= maxPreds;
+    const creditUpdate = exhausted
+      ? { $unset: { [`gamePackages.${gId}`]: "" } }
+      : { $set: { [`gamePackages.${gId}.predictionsUsed`]: newUsed } };
+
+    const atomicResult = await User.findOneAndUpdate(
+      { _id: user._id, [`gamePackages.${gId}.predictionsUsed`]: used },
+      creditUpdate,
+      { new: true }
+    );
+    if (!atomicResult) {
+      return NextResponse.json({ error: "Credit already used. Please refresh." }, { status: 409 });
+    }
+
     const upload = await Upload.create({
       userId: user._id, userName: user.name, userPhone: user.phone,
       gameId: gId, imageData: imageBase64, status: "pending",
     });
-
-    const newUsed = used + 1;
-    const exhausted = newUsed >= maxPreds;
-
-    if (exhausted) {
-      await User.updateOne({ _id: user._id }, { $unset: { [`gamePackages.${gId}`]: "" } });
-    } else {
-      await User.updateOne({ _id: user._id }, { $set: { [`gamePackages.${gId}.predictionsUsed`]: newUsed } });
-    }
 
     await Notification.create({
       type: "system",

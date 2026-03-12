@@ -58,9 +58,13 @@ export default function Dashboard() {
         fetch("/api/notifications"),
       ]);
       if (uRes.ok) { const d = await uRes.json(); setUserData(d.user || null); }
+      else { console.error("Failed to load user data:", uRes.status); }
       if (sRes.ok) { const d = await sRes.json(); if (d.settings) setSiteSettings(d.settings); }
       if (nRes.ok) { const d = await nRes.json(); setNotifs(d.notifications || []); }
-    } catch (e) {}
+    } catch (e) {
+      console.error("Dashboard load error:", e);
+      setError("Failed to load data. Please refresh the page.");
+    }
   };
 
   useEffect(() => { loadUser(); }, [session]);

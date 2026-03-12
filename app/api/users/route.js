@@ -83,11 +83,18 @@ export async function GET(req) {
     await connectDB();
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
+    const page = parseInt(searchParams.get("page")) || 1;
+    const limit = Math.min(parseInt(searchParams.get("limit")) || 50, 200);
+    const skip = (page - 1) * limit;
+
     const query = {};
     if (status && status !== "all") query.status = status;
 
-    const users = await User.find(query).select("-password").sort({ createdAt: -1 }).lean();
-    return NextResponse.json({ users });
+    const [users, total] = await Promise.all([
+      User.find(query).select("-password").sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      User.countDocuments(query),
+    ]);
+    return NextResponse.json({ users, total, page, totalPages: Math.ceil(total / limit) });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }

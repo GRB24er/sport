@@ -79,10 +79,10 @@ export async function GET(req) {
     }
 
     // User — only see predictions for games they have packages for
-    const user = await User.findById(session.user.id);
+    const user = await User.findById(session.user.id).select("gamePackages status").lean();
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const gp = mToObj(user.gamePackages);
+    const gp = user.gamePackages instanceof Map ? Object.fromEntries(user.gamePackages) : (user.gamePackages || {});
     const subscribedGames = Object.keys(gp);
 
     if (subscribedGames.length === 0) {
@@ -162,16 +162,27 @@ export async function PATCH(req) {
       return NextResponse.json({ error: "EXHAUSTED", message: "Package expired. Subscribe again." }, { status: 429 });
     }
 
-    // Claim it
-    await Prediction.updateOne({ _id: pred._id }, { $addToSet: { claimedBy: userId } });
+    // ATOMIC: Claim only if not already claimed (prevents race condition)
+    const claimResult = await Prediction.findOneAndUpdate(
+      { _id: pred._id, claimedBy: { $ne: userId } },
+      { $addToSet: { claimedBy: userId } },
+      { new: true }
+    );
+    if (!claimResult) {
+      return NextResponse.json({ error: "Already claimed", prediction: pred });
+    }
 
     const newUsed = used + 1;
     const exhausted = newUsed >= maxPreds;
 
+    // ATOMIC: Use condition to prevent double-increment
     if (exhausted) {
       await User.updateOne({ _id: user._id }, { $unset: { [`gamePackages.${gameId}`]: "" } });
     } else {
-      await User.updateOne({ _id: user._id }, { $set: { [`gamePackages.${gameId}.predictionsUsed`]: newUsed } });
+      await User.updateOne(
+        { _id: user._id, [`gamePackages.${gameId}.predictionsUsed`]: used },
+        { $set: { [`gamePackages.${gameId}.predictionsUsed`]: newUsed } }
+      );
     }
 
     const gameName = GAME_NAMES[gameId] || gameId;
