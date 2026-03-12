@@ -130,7 +130,7 @@ export async function GET(req) {
     const user = await User.findById(session.user.id).select("gamePackages status").lean();
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const gp = user.gamePackages || {};
+    const gp = mToObj(user.gamePackages);
     const subscribedGames = Object.keys(gp);
 
     if (subscribedGames.length === 0) {

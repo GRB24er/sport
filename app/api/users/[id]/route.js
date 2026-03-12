@@ -26,9 +26,9 @@ export async function GET(req, { params }) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Ensure Maps are plain objects with .lean()
-    user.gamePackages = user.gamePackages || {};
-    user.pendingGamePackages = user.pendingGamePackages || {};
+    // Convert Maps to plain objects (Mongoose 8 can return Map even with .lean())
+    user.gamePackages = mToObj(user.gamePackages);
+    user.pendingGamePackages = mToObj(user.pendingGamePackages);
 
     return NextResponse.json({ user });
   } catch (error) {

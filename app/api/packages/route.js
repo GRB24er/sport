@@ -93,7 +93,7 @@ export async function GET(req) {
 
     const requests = [];
     for (const u of users) {
-      const pending = u.pendingGamePackages || {};
+      const pending = mToObj(u.pendingGamePackages);
       for (const [gameId, r] of Object.entries(pending)) {
         if (r && r.package) {
           requests.push({

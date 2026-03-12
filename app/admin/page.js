@@ -53,19 +53,21 @@ export default function AdminDash() {
     if(session && session.user.role!=="admin") router.push("/dashboard");
   },[status,session,router]);
 
+  const safeFetch = (url) => fetch(url).then(r=>r.json()).catch(e=>{console.error("Fetch failed:",url,e);return {};});
+
   const load = async () => {
     setRefreshing(true);
     try {
       const [u,p,up,n,rd,st,br,sp,pkr] = await Promise.all([
-        fetch("/api/users?status=all&limit=200").then(r=>r.json()),
-        fetch("/api/rounds").then(r=>r.json()),
-        fetch("/api/uploads").then(r=>r.json()),
-        fetch("/api/notifications").then(r=>r.json()),
-        fetch("/api/referrals").then(r=>r.json()),
-        fetch("/api/admin/settings").then(r=>r.json()),
-        fetch("/api/admin/broadcast").then(r=>r.json()),
-        fetch("/api/support").then(r=>r.json()),
-        fetch("/api/packages").then(r=>r.json()),
+        safeFetch("/api/users?status=all&limit=200"),
+        safeFetch("/api/rounds"),
+        safeFetch("/api/uploads"),
+        safeFetch("/api/notifications"),
+        safeFetch("/api/referrals"),
+        safeFetch("/api/admin/settings"),
+        safeFetch("/api/admin/broadcast"),
+        safeFetch("/api/support"),
+        safeFetch("/api/packages"),
       ]);
       setUsers(u.users||[]);
       setPreds(p.rounds||[]);
