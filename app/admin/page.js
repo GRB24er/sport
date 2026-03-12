@@ -47,45 +47,58 @@ export default function AdminDash() {
   const [settingsForm,setSettingsForm] = useState(null);
   const [saving,setSaving] = useState(false);
   const [refreshing,setRefreshing] = useState(false);
+  const [dataLoaded,setDataLoaded] = useState(false);
 
   useEffect(() => {
     if(status==="unauthenticated") router.push("/login");
     if(session && session.user.role!=="admin") router.push("/dashboard");
   },[status,session,router]);
 
-  const safeFetch = (url) => fetch(url).then(r=>r.json()).catch(e=>{console.error("Fetch failed:",url,e);return {};});
-
+  // Single consolidated fetch — 1 serverless cold start instead of 9
   const load = async () => {
     setRefreshing(true);
     try {
-      const [u,p,up,n,rd,st,br,sp,pkr] = await Promise.all([
-        safeFetch("/api/users?status=all&limit=200"),
-        safeFetch("/api/rounds"),
-        safeFetch("/api/uploads"),
-        safeFetch("/api/notifications"),
-        safeFetch("/api/referrals"),
-        safeFetch("/api/admin/settings"),
-        safeFetch("/api/admin/broadcast"),
-        safeFetch("/api/support"),
-        safeFetch("/api/packages"),
-      ]);
-      setUsers(u.users||[]);
-      setPreds(p.rounds||[]);
-      setUploads(up.uploads||[]);
-      setNotifs(n.notifications||[]);
-      setRefData(rd||{ usersWithCodes:[], allReferred:[], stats:{} });
-      if(st?.settings) { setSettings(st.settings); if(!settingsForm) setSettingsForm(st.settings); }
-      setBroadcasts(br?.broadcasts||[]);
-      setSupportThreads(sp?.threads||[]);
-      setSupportUnread(sp?.totalUnread||0);
-      setPkgRequests(pkr?.requests||[]);
+      const res = await fetch("/api/admin/dashboard");
+      const d = await res.json();
+      if (d.error) { console.error("Dashboard load error:", d.error); setRefreshing(false); return; }
+      setUsers(d.users||[]);
+      setPreds(d.rounds||[]);
+      setUploads(d.uploads||[]);
+      setNotifs(d.notifications||[]);
+      setRefData(d.referralData||{ usersWithCodes:[], allReferred:[], stats:{} });
+      if(d.settings) { setSettings(d.settings); if(!settingsForm) setSettingsForm(d.settings); }
+      setBroadcasts(d.broadcasts||[]);
+      setSupportThreads(d.support?.threads||[]);
+      setSupportUnread(d.support?.totalUnread||0);
+      setPkgRequests(d.packageRequests||[]);
+      setDataLoaded(true);
     } catch(e) { console.error("Load error",e); }
     setRefreshing(false);
   };
 
   useEffect(() => { if(session?.user?.role==="admin") load(); },[session]);
 
-  if(status==="loading"||!session) return <div style={{minHeight:"100vh",background:"#0B0D10",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{width:40,height:40,border:"3px solid #1E2028",borderTopColor:"#E31725",borderRadius:"50%",animation:"spin .8s linear infinite"}} /><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style></div>;
+  const LoadingSkeleton = () => (
+    <div style={{minHeight:"100vh",background:"#0B0D10",padding:24}}>
+      <div style={{maxWidth:1200,margin:"0 auto"}}>
+        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:32}}>
+          <div style={{width:60,height:60,borderRadius:12,background:"#1E2028"}} />
+          <div><div style={{width:180,height:24,background:"#1E2028",borderRadius:6,marginBottom:8}} /><div style={{width:120,height:14,background:"#1A1C22",borderRadius:4}} /></div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,marginBottom:24}}>
+          {[1,2,3].map(i=><div key={i} style={{background:"#14161B",border:"1px solid #1E2028",borderRadius:12,padding:24}}><div style={{width:80,height:12,background:"#1E2028",borderRadius:4,marginBottom:12}} /><div style={{width:120,height:32,background:"#1E2028",borderRadius:6}} /></div>)}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,marginBottom:24}}>
+          {[1,2,3,4].map(i=><div key={i} style={{background:"#14161B",border:"1px solid #1E2028",borderRadius:12,padding:20}}><div style={{width:60,height:10,background:"#1E2028",borderRadius:4,marginBottom:10}} /><div style={{width:80,height:24,background:"#1E2028",borderRadius:6}} /></div>)}
+        </div>
+        <div style={{textAlign:"center",color:"#555",fontSize:14,marginTop:40}}>Loading dashboard data...</div>
+      </div>
+      <style>{`@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:0.8}} [style*="background: #1E2028"],[style*="background:#1E2028"]{animation:pulse 1.5s ease-in-out infinite}`}</style>
+    </div>
+  );
+
+  if(status==="loading"||!session) return <LoadingSkeleton />;
+  if(!dataLoaded && refreshing) return <LoadingSkeleton />;
 
   // ── CALCULATED STATS ──
   const pending = users.filter(u=>u.status==="pending");

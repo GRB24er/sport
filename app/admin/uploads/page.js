@@ -9,9 +9,9 @@ export default function AdminUploadsPage() {
 
   useEffect(() => {
     fetch("/api/uploads")
-      .then((r) => r.json())
+      .then((r) => { if(!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((d) => setUploads(d.uploads || []))
-      .catch(console.error)
+      .catch((e) => console.error("Uploads fetch error:", e))
       .finally(() => setLoading(false));
   }, []);
 
@@ -27,7 +27,7 @@ export default function AdminUploadsPage() {
         <Card key={img._id} className="mb-3 flex justify-between items-center flex-wrap gap-3">
           <div>
             <div className="font-bold text-sm font-display">
-              {img.userId?.name || "Unknown"} <span className="text-steel font-normal text-xs">({img.userId?.phone})</span>
+              {img.userName || "Unknown"} <span className="text-steel font-normal text-xs">({img.userPhone || "—"})</span>
             </div>
             <div className="text-steel text-xs">Uploaded: {new Date(img.createdAt).toLocaleString()}</div>
             {img.predictionId && (
