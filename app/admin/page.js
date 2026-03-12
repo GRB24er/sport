@@ -48,6 +48,8 @@ export default function AdminDash() {
   const [saving,setSaving] = useState(false);
   const [refreshing,setRefreshing] = useState(false);
   const [dataLoaded,setDataLoaded] = useState(false);
+  const [uploadsWithImages,setUploadsWithImages] = useState(null);
+  const [loadingImages,setLoadingImages] = useState(false);
 
   useEffect(() => {
     if(status==="unauthenticated") router.push("/login");
@@ -72,11 +74,27 @@ export default function AdminDash() {
       setSupportUnread(d.support?.totalUnread||0);
       setPkgRequests(d.packageRequests||[]);
       setDataLoaded(true);
+      setUploadsWithImages(null); // Clear image cache so it refetches when tab is opened
     } catch(e) { console.error("Load error",e); }
     setRefreshing(false);
   };
 
   useEffect(() => { if(session?.user?.role==="admin") load(); },[session]);
+
+  // Lazy-load upload images only when Uploads tab is opened
+  useEffect(() => {
+    if(tab==="uploads" && !uploadsWithImages && !loadingImages) {
+      setLoadingImages(true);
+      fetch("/api/uploads?withImage=true")
+        .then(r=>r.json())
+        .then(d=>{ if(d.uploads) setUploadsWithImages(d.uploads); })
+        .catch(e=>console.error("Image load error:",e))
+        .finally(()=>setLoadingImages(false));
+    }
+  },[tab]);
+
+  // Use image-enriched uploads when available, fall back to metadata-only
+  const displayUploads = uploadsWithImages || uploads;
 
   const LoadingSkeleton = () => (
     <div style={{minHeight:"100vh",background:"#0B0D10",padding:24}}>
@@ -528,23 +546,24 @@ export default function AdminDash() {
           {/* ═══ PREDICTIONS ═══ */}
           {tab==="uploads"&&(<div className="as">
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
-              <div><h1 style={{...val,fontSize:28}}>Uploads ({uploads.length})</h1><p style={{fontSize:12,color:"#444"}}>{uploads.filter(u=>u.status==="pending").length} pending • {uploads.filter(u=>u.status==="responded").length} responded</p></div>
+              <div><h1 style={{...val,fontSize:28}}>Uploads ({displayUploads.length})</h1><p style={{fontSize:12,color:"#444"}}>{displayUploads.filter(u=>u.status==="pending").length} pending • {displayUploads.filter(u=>u.status==="responded").length} responded</p></div>
             </div>
+            {loadingImages&&<div style={{textAlign:"center",padding:"12px 0",color:"#D4AF37",fontSize:12,fontWeight:600}}>Loading screenshots...</div>}
 
-            {uploads.filter(u=>u.status==="pending").length===0&&uploads.filter(u=>u.status==="responded").length===0&&(
+            {displayUploads.filter(u=>u.status==="pending").length===0&&displayUploads.filter(u=>u.status==="responded").length===0&&(
               <div style={{...card,textAlign:"center",padding:48,color:"#444"}}><div style={{fontSize:48,marginBottom:8}}>📸</div>No uploads yet. Users will send screenshots here.</div>
             )}
 
             {/* Pending uploads */}
-            {uploads.filter(u=>u.status==="pending").length>0&&(
+            {displayUploads.filter(u=>u.status==="pending").length>0&&(
               <div style={{marginBottom:20}}>
                 <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:"#D4AF37",marginBottom:8}}>⏳ PENDING — NEED YOUR PREDICTION</div>
-                {uploads.filter(u=>u.status==="pending").map((up,i)=>(
+                {displayUploads.filter(u=>u.status==="pending").map((up,i)=>(
                   <div key={up._id} className={`as d${Math.min(i+1,5)}`} style={{background:"#12141A",border:"1px solid #D4AF3730",borderRadius:14,marginBottom:12,overflow:"hidden"}}>
                     <div style={{padding:16}}>
                       <div style={{display:"flex",gap:14,marginBottom:12}}>
-                        <div style={{width:100,height:100,borderRadius:10,overflow:"hidden",border:"1px solid #1E2028",flexShrink:0,cursor:"pointer"}} onClick={()=>setExpanded(expanded===up._id?null:up._id)}>
-                          <img src={up.imageData} style={{width:"100%",height:"100%",objectFit:"cover"}} alt="screenshot"/>
+                        <div style={{width:100,height:100,borderRadius:10,overflow:"hidden",border:"1px solid #1E2028",flexShrink:0,cursor:"pointer",background:"#1E2028",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setExpanded(expanded===up._id?null:up._id)}>
+                          {up.imageData?<img src={up.imageData} style={{width:"100%",height:"100%",objectFit:"cover"}} alt="screenshot"/>:<span style={{fontSize:24}}>📸</span>}
                         </div>
                         <div style={{flex:1}}>
                           <div style={{fontWeight:700,fontSize:14}}>{up.userName}</div>
@@ -560,7 +579,7 @@ export default function AdminDash() {
                       {/* Full screenshot */}
                       {expanded===up._id&&(
                         <div style={{marginBottom:14,borderRadius:12,overflow:"hidden",border:"1px solid #1E2028"}}>
-                          <img src={up.imageData} style={{width:"100%",maxHeight:400,objectFit:"contain",display:"block",background:"#0B0D10"}} alt="full screenshot"/>
+                          {up.imageData?<img src={up.imageData} style={{width:"100%",maxHeight:400,objectFit:"contain",display:"block",background:"#0B0D10"}} alt="full screenshot"/>:<div style={{padding:32,textAlign:"center",color:"#555",background:"#0B0D10",fontSize:13}}>Loading image...</div>}
                         </div>
                       )}
 
@@ -618,10 +637,10 @@ export default function AdminDash() {
             )}
 
             {/* Responded uploads */}
-            {uploads.filter(u=>u.status==="responded").length>0&&(
+            {displayUploads.filter(u=>u.status==="responded").length>0&&(
               <div>
                 <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:"#0B9635",marginBottom:8}}>✅ RESPONDED</div>
-                {uploads.filter(u=>u.status==="responded").map((up,i)=>(
+                {displayUploads.filter(u=>u.status==="responded").map((up,i)=>(
                   <div key={up._id} style={{background:"#12141A",border:"1px solid #0B963520",borderRadius:14,marginBottom:10,padding:14}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                       <div>
