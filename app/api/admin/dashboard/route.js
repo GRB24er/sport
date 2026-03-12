@@ -23,6 +23,12 @@ function mToObj(m) {
   return typeof m === "object" ? { ...m } : {};
 }
 
+// ── 30-second in-memory cache ──
+// Prevents hammering DB on rapid refreshes or multiple admin tabs
+let dashCache = null;
+let dashCacheTime = 0;
+const CACHE_TTL = 30 * 1000;
+
 // Single consolidated endpoint — replaces 9 separate API calls
 // One cold start, one DB connection, one session check, all queries in parallel
 export async function GET() {
@@ -32,9 +38,17 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Return cached response if fresh (within 30s)
+    const now = Date.now();
+    if (dashCache && (now - dashCacheTime) < CACHE_TTL) {
+      return NextResponse.json(dashCache);
+    }
+
     await connectDB();
 
     // Run ALL queries in parallel — single DB connection
+    // KEY FIX: Uploads use .select("-imageData") to skip huge base64 strings (~1-2MB each!)
+    // Without this, 100 uploads = 100-200MB of data transferred for nothing
     const [
       users,
       uploads,
@@ -47,10 +61,14 @@ export async function GET() {
       supportThreads,
       pkgUsers,
     ] = await Promise.all([
-      // 1. Users (limited to 200, no password)
-      User.find({}).select("-password").sort({ createdAt: -1 }).limit(200).lean(),
-      // 2. Uploads (latest 100)
-      Upload.find({}).sort({ createdAt: -1 }).limit(100).lean(),
+      // 1. Users — only fields the dashboard needs (skip password, avatar, etc.)
+      User.find({})
+        .select("name phone email status amountPaidGHS referredBy referralCode gamePackages pendingGamePackages sportyBetId referenceNumber paymentProvider createdAt approvedAt")
+        .sort({ createdAt: -1 }).limit(200).lean(),
+      // 2. Uploads — EXCLUDE imageData (base64 screenshots are 500KB-2MB each!)
+      Upload.find({})
+        .select("-imageData")
+        .sort({ createdAt: -1 }).limit(100).lean(),
       // 3. Rounds (latest 50)
       Round.find({}).sort({ createdAt: -1 }).limit(50).lean(),
       // 4. Notifications (admin, latest 50)
@@ -59,17 +77,17 @@ export async function GET() {
         .sort({ createdAt: -1 }).limit(50).lean(),
       // 5. Referral — users with codes
       User.find({ referralCode: { $ne: null } })
-        .select("name phone referralCode referralBalance referralTotalEarned referralCount status package")
+        .select("name phone referralCode referralBalance referralTotalEarned referralCount status")
         .sort({ referralCount: -1 }).lean(),
       // 6. Referral — referred users
       User.find({ referredBy: { $ne: null } })
-        .select("name phone referredBy status package createdAt")
+        .select("name phone referredBy status createdAt")
         .sort({ createdAt: -1 }).lean(),
       // 7. Settings
       Settings.findOne({ key: "main" }).lean(),
-      // 8. Broadcasts
-      Broadcast.find().sort({ createdAt: -1 }).limit(50).lean(),
-      // 9. Support threads (lightweight — just counts)
+      // 8. Broadcasts (latest 20 is enough for the list)
+      Broadcast.find().sort({ createdAt: -1 }).limit(20).lean(),
+      // 9. Support threads
       SupportThread.find().sort({ lastDate: -1 }).lean(),
       // 10. Package requests — users with pending packages
       User.find({ "pendingGamePackages": { $exists: true, $ne: {} } })
@@ -95,7 +113,7 @@ export async function GET() {
       },
     };
 
-    // --- Process support threads (enrich with user info from memory) ---
+    // --- Process support threads (enrich with user info already in memory) ---
     const userMap = {};
     users.forEach(u => { userMap[u._id.toString()] = u; });
 
@@ -148,7 +166,7 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({
+    const result = {
       users,
       uploads,
       rounds,
@@ -159,7 +177,13 @@ export async function GET() {
       broadcasts,
       support: { threads: enrichedThreads, totalUnread },
       packageRequests: requests,
-    });
+    };
+
+    // Cache result for 30 seconds
+    dashCache = result;
+    dashCacheTime = Date.now();
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Admin dashboard error:", error);
     return NextResponse.json({ error: "Failed to load dashboard" }, { status: 500 });

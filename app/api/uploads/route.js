@@ -108,7 +108,10 @@ export async function GET(req) {
     if (session.user.role === "admin") {
       const query = {};
       if (status && status !== "all") query.status = status;
-      const uploads = await Upload.find(query).sort({ createdAt: -1 }).limit(100).lean();
+      // Exclude imageData for list view — each base64 screenshot is 500KB-2MB
+      const wantImage = searchParams.get("withImage") === "true";
+      const projection = wantImage ? {} : { imageData: 0 };
+      const uploads = await Upload.find(query, projection).sort({ createdAt: -1 }).limit(100).lean();
       return NextResponse.json({ uploads });
     }
 
