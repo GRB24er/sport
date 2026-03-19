@@ -1020,7 +1020,7 @@ export default function AdminDash() {
           </div>)}
 
           {/* ═══ SETTINGS ═══ */}
-          {tab==="settings"&&settingsForm&&(<div className="as"
+          {tab==="settings"&&settingsForm&&(<div className="as">
             <h1 style={{...val,fontSize:28,marginBottom:4}}>Platform Settings</h1>
             <p style={{fontSize:14,color:"#555",marginBottom:20}}>Configure your platform</p>
 
