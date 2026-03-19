@@ -42,7 +42,7 @@ export async function POST(req) {
       if (referrer) {
         await Notification.create({
           type: "referral",
-          message: `${user.name} signed up using your referral code! You earned GH₵10 bonus.`,
+          message: `${user.name} signed up using your referral code! You earned GH₵50 bonus.`,
           forUserId: referrer._id,
         });
       }

@@ -7,7 +7,7 @@ import User from "@/models/User";
 import Notification from "@/models/Notification";
 import Settings from "@/models/Settings";
 
-const REFERRAL_BONUS_DEF = 10;
+const REFERRAL_BONUS_DEF = 50;
 
 export async function POST(req) {
   try {

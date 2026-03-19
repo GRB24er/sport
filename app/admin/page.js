@@ -48,6 +48,10 @@ export default function AdminDash() {
   const [saving,setSaving] = useState(false);
   const [banModal,setBanModal] = useState(null);
   const [banForm,setBanForm] = useState({reason:"",hours:"",banIP:false});
+  const [userSearch,setUserSearch] = useState("");
+  const [freeGames,setFreeGames] = useState([]);
+  const [fgForm,setFgForm] = useState({title:"",content:"",published:true});
+  const [fgSaving,setFgSaving] = useState(false);
   const [refreshing,setRefreshing] = useState(false);
   const [dataLoaded,setDataLoaded] = useState(false);
   const [uploadsWithImages,setUploadsWithImages] = useState(null);
@@ -77,6 +81,8 @@ export default function AdminDash() {
       setPkgRequests(d.packageRequests||[]);
       setDataLoaded(true);
       setUploadsWithImages(null); // Clear image cache so it refetches when tab is opened
+      // Load free games
+      try { const fgRes = await fetch("/api/free-games"); const fgD = await fgRes.json(); setFreeGames(fgD.freeGames||[]); } catch(e) {}
     } catch(e) { console.error("Load error",e); }
     setRefreshing(false);
   };
@@ -135,7 +141,11 @@ export default function AdminDash() {
   const getPkg = id => { if(!id) return NOPKG; return PKGS.find(p => p.id === id) || NOPKG; };
   const rejected = users.filter(u=>u.status==="rejected");
   const unread = notifs.filter(n=>!n.read).length;
-  const filtered = filter==="all"?users:filter==="banned"?users.filter(u=>u.isBanned):users.filter(u=>u.status===filter);
+  const filteredByStatus = filter==="all"?users:filter==="banned"?users.filter(u=>u.isBanned):users.filter(u=>u.status===filter);
+  const filtered = userSearch.trim() ? filteredByStatus.filter(u => {
+    const q = userSearch.toLowerCase();
+    return (u.name||"").toLowerCase().includes(q) || (u.phone||"").includes(q) || (u.email||"").toLowerCase().includes(q) || (u.referralCode||"").toLowerCase().includes(q);
+  }) : filteredByStatus;
 
   // Revenue calculations
   const calcRevenue = (userList) => {
@@ -171,7 +181,7 @@ export default function AdminDash() {
   // Referral stats
   const totalReferrals = users.filter(u => u.referredBy).length;
   const approvedReferrals = approved.filter(u => u.referredBy).length;
-  const referralBonus = approvedReferrals * 10;
+  const referralBonus = approvedReferrals * 50;
 
   // Top referrers
   const referrerMap = {};
@@ -187,7 +197,7 @@ export default function AdminDash() {
   topReferrers.forEach(r => {
     const u = users.find(u => u.referralCode === r.code);
     r.name = u ? u.name : r.code;
-    r.bonus = r.approved * 10;
+    r.bonus = r.approved * 50;
   });
 
   // Active users (have used predictions)
@@ -296,6 +306,7 @@ export default function AdminDash() {
     {id:"payments",icon:"💳",label:"Payments"},
     {id:"support",icon:"💬",label:"Support",cnt:supportUnread,cc:supportUnread>0?"#E31725":null},
     {id:"broadcast",icon:"📢",label:"Broadcast",cnt:broadcasts.length},
+    {id:"free-games",icon:"🎁",label:"Free Games",cnt:freeGames.filter(f=>f.published).length,cc:freeGames.filter(f=>f.published).length>0?"#0B9635":null},
     {id:"settings",icon:"⚙️",label:"Settings"},
   ];
 
@@ -525,11 +536,18 @@ export default function AdminDash() {
 
           {/* ═══ USERS ═══ */}
           {tab==="users"&&(<div className="as">
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
               <h1 style={{...val,fontSize:28}}>All Users ({filtered.length})</h1>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{["all","approved","pending","rejected","banned"].map(f=>(
                 <button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",border:filter===f?"1px solid #E31725":"1px solid #1E2028",background:filter===f?"#E31725":"transparent",color:filter===f?"#fff":"#555",fontFamily:"'DM Sans'",letterSpacing:.5,textTransform:"uppercase"}}>{f} ({f==="all"?users.length:f==="banned"?users.filter(u=>u.isBanned).length:users.filter(u=>u.status===f).length})</button>
               ))}</div>
+            </div>
+            <div style={{marginBottom:16}}>
+              <div style={{position:"relative"}}>
+                <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",fontSize:14,color:"#444"}}>🔍</span>
+                <input placeholder="Search by name, phone, email or referral code..." value={userSearch} onChange={e=>setUserSearch(e.target.value)} style={{width:"100%",padding:"12px 14px 12px 38px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:10,color:"#F0F0F2",fontSize:13,fontFamily:"'DM Sans'",outline:"none"}} />
+                {userSearch&&<button onClick={()=>setUserSearch("")} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:16}}>✕</button>}
+              </div>
             </div>
             <div className="atable-wrap">
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
@@ -947,8 +965,62 @@ export default function AdminDash() {
             ))}
           </div>)}
 
+          {/* ═══ FREE GAMES ═══ */}
+          {tab==="free-games"&&(<div className="as">
+            <h1 style={{...val,fontSize:28,marginBottom:16}}>Free Games</h1>
+            <p style={{fontSize:12,color:"#555",marginBottom:20}}>Publish free prediction tips that all signed-up users can see. When no games are published, users see a "check back later" message.</p>
+
+            {/* Create new free game */}
+            <div style={{...card,border:"1px solid #0B963530"}}>
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:"#0B9635",marginBottom:12}}>🎁 PUBLISH NEW FREE GAME</div>
+              <div style={{marginBottom:10}}><input {...inp({placeholder:"Title (e.g. Today's Free Pick)",value:fgForm.title,onChange:e=>setFgForm({...fgForm,title:e.target.value})})} /></div>
+              <div style={{marginBottom:10}}><textarea placeholder="Paste your free game predictions here...&#10;&#10;e.g.&#10;⚽ Man Utd vs Chelsea — Over 2.5 Goals @ 1.85&#10;⚽ Barcelona vs Real Madrid — BTTS @ 1.70&#10;&#10;Total Odd: 3.15" value={fgForm.content} onChange={e=>setFgForm({...fgForm,content:e.target.value})} style={{width:"100%",padding:"12px 14px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:8,color:"#F0F0F2",fontSize:13,fontFamily:"'DM Sans'",outline:"none",minHeight:140,resize:"vertical"}} /></div>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+                <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:12,color:"#888"}}>
+                  <input type="checkbox" checked={fgForm.published} onChange={e=>setFgForm({...fgForm,published:e.target.checked})} style={{accentColor:"#0B9635"}} /> Publish immediately
+                </label>
+              </div>
+              <button disabled={fgSaving||!fgForm.content.trim()} onClick={async()=>{
+                setFgSaving(true);
+                try {
+                  await fetch("/api/free-games",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(fgForm)});
+                  setFgForm({title:"",content:"",published:true});
+                  load();
+                } catch(e){}
+                setFgSaving(false);
+              }} style={btn("#0B9635")}>{fgSaving?"Publishing...":"Publish Free Game"}</button>
+            </div>
+
+            {/* Existing free games */}
+            {freeGames.length===0?(<div style={{...card,textAlign:"center",padding:48,color:"#444"}}><div style={{fontSize:48,marginBottom:8}}>🎁</div>No free games published yet.</div>):(
+              freeGames.map(fg=>(
+                <div key={fg._id} style={{...card,border:fg.published?"1px solid #0B963520":"1px solid #1E2028"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                    <div>
+                      <div style={{fontWeight:700,fontSize:14}}>{fg.title||"Free Game"}</div>
+                      <div style={{fontSize:11,color:"#444"}}>{fDate(fg.createdAt)}</div>
+                    </div>
+                    <span style={badge(fg.published?"#0B963518":"#55555518",fg.published?"#0B9635":"#555")}>{fg.published?"LIVE":"DRAFT"}</span>
+                  </div>
+                  <pre style={{background:"#0B0D10",border:"1px solid #1E2028",borderRadius:8,padding:12,fontSize:12,color:"#ccc",whiteSpace:"pre-wrap",wordWrap:"break-word",fontFamily:"'DM Sans'",lineHeight:1.6,marginBottom:10}}>{fg.content}</pre>
+                  <div style={{display:"flex",gap:6}}>
+                    <button onClick={async()=>{
+                      await fetch("/api/free-games",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:fg._id,published:!fg.published})});
+                      load();
+                    }} style={btn(fg.published?"#D4AF37":"#0B9635")}>{fg.published?"Unpublish":"Publish"}</button>
+                    <button onClick={async()=>{
+                      if(!confirm("Delete this free game?")) return;
+                      await fetch("/api/free-games",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:fg._id})});
+                      load();
+                    }} style={btn("#AE0C0E")}>Delete</button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>)}
+
           {/* ═══ SETTINGS ═══ */}
-          {tab==="settings"&&settingsForm&&(<div className="as">
+          {tab==="settings"&&settingsForm&&(<div className="as"
             <h1 style={{...val,fontSize:28,marginBottom:4}}>Platform Settings</h1>
             <p style={{fontSize:14,color:"#555",marginBottom:20}}>Configure your platform</p>
 
