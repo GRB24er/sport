@@ -181,7 +181,7 @@ export default function AdminDash() {
   // Referral stats
   const totalReferrals = users.filter(u => u.referredBy).length;
   const approvedReferrals = approved.filter(u => u.referredBy).length;
-  const referralBonus = approvedReferrals * 10;
+  const referralBonus = approvedReferrals * 50;
 
   // Top referrers
   const referrerMap = {};
@@ -197,7 +197,7 @@ export default function AdminDash() {
   topReferrers.forEach(r => {
     const u = users.find(u => u.referralCode === r.code);
     r.name = u ? u.name : r.code;
-    r.bonus = r.approved * 10;
+    r.bonus = r.approved * 50;
   });
 
   // Active users (have used predictions)

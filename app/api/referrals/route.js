@@ -52,7 +52,7 @@ export async function POST(req) {
     // Notify user
     await Notification.create({
       type: "referral",
-      message: `You've been assigned a referral code: ${code}. Share it with friends — you earn GH₵10 for every approved signup!`,
+      message: `You've been assigned a referral code: ${code}. Share it with friends — you earn GH₵50 for every approved signup!`,
       forUserId: user._id,
     });
 
