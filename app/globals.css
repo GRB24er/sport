@@ -5,8 +5,8 @@
 @import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap");
 
 :root {
-  --brand-red: #e31725;
-  --brand-crimson: #ae0c0e;
+  --brand-red: #0b9635;
+  --brand-crimson: #087a2a;
   --brand-green: #0b9635;
   --brand-gold: #d4af37;
   --dark-bg: #1a1d22;
@@ -47,7 +47,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Selection */
 ::selection {
-  background: rgba(227, 23, 37, 0.3);
+  background: rgba(11, 150, 53, 0.3);
   color: var(--smoke);
 }
 
@@ -57,7 +57,7 @@ select:focus,
 textarea:focus {
   border-color: var(--brand-red) !important;
   outline: none;
-  box-shadow: 0 0 0 2px rgba(227, 23, 37, 0.15);
+  box-shadow: 0 0 0 2px rgba(11, 150, 53, 0.15);
 }
 
 /* Animations */
@@ -78,8 +78,8 @@ textarea:focus {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 5px rgba(227, 23, 37, 0.2); }
-  50% { box-shadow: 0 0 20px rgba(227, 23, 37, 0.4); }
+  0%, 100% { box-shadow: 0 0 5px rgba(11, 150, 53, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(11, 150, 53, 0.4); }
 }
 
 .animate-slide-up {
@@ -92,7 +92,7 @@ textarea:focus {
 
 /* Gradient text */
 .text-gradient-red {
-  background: linear-gradient(135deg, #e31725, #ff4757);
+  background: linear-gradient(135deg, #0b9635, #2ed573);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -116,8 +116,8 @@ textarea:focus {
 
 /* Glow border */
 .glow-red {
-  border: 1px solid rgba(227, 23, 37, 0.3);
-  box-shadow: 0 0 15px rgba(227, 23, 37, 0.1);
+  border: 1px solid rgba(11, 150, 53, 0.3);
+  box-shadow: 0 0 15px rgba(11, 150, 53, 0.1);
 }
 .glow-green {
   border: 1px solid rgba(11, 150, 53, 0.3);

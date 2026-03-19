@@ -290,7 +290,7 @@ export default function SignupPage() {
                 ))}
               </div>
 
-              <div className="su-warn">🔒 <strong style={{color:"#D4AF37"}}>Important:</strong> After sending, you'll receive a transaction code via SMS. Enter it below. Admin verifies within 5–30 minutes.</div>
+              <div className="su-warn">🔒 <strong style={{color:"#D4AF37"}}>Important:</strong> After sending, you'll receive a transaction code via SMS. Enter it below along with your payment screenshot for verification.</div>
 
               {/* Reference form */}
               <form onSubmit={submit}>
@@ -349,7 +349,7 @@ export default function SignupPage() {
                 ))}
               </div>
 
-              <p style={{color:"#444",fontSize:13,marginBottom:24,lineHeight:1.7}}>Admin will verify your payment within <strong style={{color:"#888"}}>5–30 minutes</strong>. You'll be able to login once approved.</p>
+              <p style={{color:"#444",fontSize:13,marginBottom:24,lineHeight:1.7}}>Your payment is being verified. This usually takes <strong style={{color:"#888"}}>5–30 minutes</strong>. You'll be able to login once approved.</p>
               <a href="/login"><button className="su-btn su-btn-r">Go to Login →</button></a>
             </div>)}
           </div>
