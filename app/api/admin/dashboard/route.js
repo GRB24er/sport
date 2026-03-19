@@ -63,7 +63,7 @@ export async function GET() {
     ] = await Promise.all([
       // 1. Users — only fields the dashboard needs (skip password, avatar, etc.)
       User.find({})
-        .select("name phone email status amountPaidGHS referredBy referralCode gamePackages pendingGamePackages sportyBetId referenceNumber paymentProvider createdAt approvedAt")
+        .select("name phone email status amountPaidGHS referredBy referralCode gamePackages pendingGamePackages sportyBetId referenceNumber paymentProvider createdAt approvedAt isBanned banReason bannedAt bannedUntil bannedIP lastLoginIP paymentScreenshot")
         .sort({ createdAt: -1 }).limit(200).lean(),
       // 2. Uploads — EXCLUDE imageData (base64 screenshots are 500KB-2MB each!)
       Upload.find({})

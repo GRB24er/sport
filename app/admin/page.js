@@ -46,6 +46,8 @@ export default function AdminDash() {
   const [broadcastForm,setBroadcastForm] = useState({subject:"",body:""});
   const [settingsForm,setSettingsForm] = useState(null);
   const [saving,setSaving] = useState(false);
+  const [banModal,setBanModal] = useState(null);
+  const [banForm,setBanForm] = useState({reason:"",hours:"",banIP:false});
   const [refreshing,setRefreshing] = useState(false);
   const [dataLoaded,setDataLoaded] = useState(false);
   const [uploadsWithImages,setUploadsWithImages] = useState(null);
@@ -133,7 +135,7 @@ export default function AdminDash() {
   const getPkg = id => { if(!id) return NOPKG; return PKGS.find(p => p.id === id) || NOPKG; };
   const rejected = users.filter(u=>u.status==="rejected");
   const unread = notifs.filter(n=>!n.read).length;
-  const filtered = filter==="all"?users:users.filter(u=>u.status===filter);
+  const filtered = filter==="all"?users:filter==="banned"?users.filter(u=>u.isBanned):users.filter(u=>u.status===filter);
 
   // Revenue calculations
   const calcRevenue = (userList) => {
@@ -207,6 +209,15 @@ export default function AdminDash() {
 
   const upgradeUser = async (id, newPkg) => {
     await fetch(`/api/users/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({package:newPkg,predictionsUsed:0})});
+    setUserModal(null); load();
+  };
+  const banUser = async () => {
+    if(!banModal) return;
+    await fetch("/api/users/ban",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:banModal._id||banModal,reason:banForm.reason,hours:banForm.hours?parseInt(banForm.hours):null,banIP:banForm.banIP})});
+    setBanModal(null); setBanForm({reason:"",hours:"",banIP:false}); setUserModal(null); load();
+  };
+  const unbanUser = async (id) => {
+    await fetch("/api/users/ban",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:id})});
     setUserModal(null); load();
   };
   const approvePkg = async (userId, gameId) => { await fetch("/api/packages",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId,gameId,action:"approve"})}); load(); };
@@ -516,8 +527,8 @@ export default function AdminDash() {
           {tab==="users"&&(<div className="as">
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
               <h1 style={{...val,fontSize:28}}>All Users ({filtered.length})</h1>
-              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{["all","approved","pending","rejected"].map(f=>(
-                <button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",border:filter===f?"1px solid #E31725":"1px solid #1E2028",background:filter===f?"#E31725":"transparent",color:filter===f?"#fff":"#555",fontFamily:"'DM Sans'",letterSpacing:.5,textTransform:"uppercase"}}>{f} ({f==="all"?users.length:users.filter(u=>u.status===f).length})</button>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{["all","approved","pending","rejected","banned"].map(f=>(
+                <button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",border:filter===f?"1px solid #E31725":"1px solid #1E2028",background:filter===f?"#E31725":"transparent",color:filter===f?"#fff":"#555",fontFamily:"'DM Sans'",letterSpacing:.5,textTransform:"uppercase"}}>{f} ({f==="all"?users.length:f==="banned"?users.filter(u=>u.isBanned).length:users.filter(u=>u.status===f).length})</button>
               ))}</div>
             </div>
             <div className="atable-wrap">
@@ -531,7 +542,7 @@ export default function AdminDash() {
                     <td style={{padding:"10px 8px"}}><span style={{color:(u.predictionsUsed||0)>=p.max?"#E31725":"#0B9635",fontWeight:700}}>{u.predictionsUsed||0}/{p.max}</span></td>
                     <td style={{padding:"10px 8px",color:"#0B9635",fontWeight:700}}>{fG(rev)}</td>
                     <td style={{padding:"10px 8px",fontFamily:"monospace",fontSize:11,color:"#555"}}>{u.referralCode||"—"}</td>
-                    <td style={{padding:"10px 8px"}}><span style={badge(u.status==="approved"?"#0B963518":u.status==="pending"?"#D4AF3718":"#E3172518",u.status==="approved"?"#0B9635":u.status==="pending"?"#D4AF37":"#E31725")}>{u.status}</span></td>
+                    <td style={{padding:"10px 8px"}}><span style={badge(u.isBanned?"#FF6B0018":u.status==="approved"?"#0B963518":u.status==="pending"?"#D4AF3718":"#E3172518",u.isBanned?"#FF6B00":u.status==="approved"?"#0B9635":u.status==="pending"?"#D4AF37":"#E31725")}>{u.isBanned?"banned":u.status}</span></td>
                     <td style={{padding:"10px 8px",fontSize:11,color:"#444"}}>{tAgo(u.createdAt)}</td>
                     <td style={{padding:"10px 8px"}}><div style={{display:"flex",gap:4}}>
                       {u.status==="pending"&&<button onClick={e=>{e.stopPropagation();approve(u._id)}} style={btn("#0B9635")}>Approve</button>}
@@ -1016,7 +1027,7 @@ export default function AdminDash() {
                 {l:"Revenue",v:fB(rev),c:"#0B9635"},
                 {l:"Referral Code",v:u.referralCode||"Not assigned yet"},{l:"Referred By",v:u.referredBy||"None"},{l:"Referral Balance",v:fB(u.referralBalance||0),c:"#0B9635"},{l:"Total Earned",v:fB(u.referralTotalEarned||0),c:"#0B9635"},{l:"Referral Count",v:String(u.referralCount||0)},
                 {l:"Reference",v:u.referenceNumber||"—",m:true},{l:"Provider",v:u.paymentProvider||"—"},
-                {l:"Joined",v:fDate(u.createdAt)},
+                {l:"Last IP",v:u.lastLoginIP||"—"},{l:"Joined",v:fDate(u.createdAt)},
               ].map((r,i)=>(
                 <div key={r.l} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:i<10?"1px solid #151820":"none"}}>
                   <span style={{color:"#444",fontSize:12}}>{r.l}</span>
@@ -1024,6 +1035,10 @@ export default function AdminDash() {
                 </div>
               ))}
             </div>
+            {u.paymentScreenshot&&<div style={{marginBottom:16}}>
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:6}}>PAYMENT SCREENSHOT</div>
+              <img src={u.paymentScreenshot} alt="Payment proof" style={{width:"100%",maxHeight:300,objectFit:"contain",borderRadius:12,border:"1px solid #1E2028",background:"#0B0D10"}} />
+            </div>}
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
               {u.status==="pending"&&<button onClick={()=>{approve(u._id);setUserModal(null)}} style={{...btn("#0B9635"),flex:1,padding:12,fontSize:13}}>✓ Approve</button>}
               {u.status==="approved"&&<>
@@ -1032,11 +1047,50 @@ export default function AdminDash() {
                 {isLocked&&<button onClick={()=>upgradeUser(u._id,u.package)} style={{...btn("#0B9635"),flex:1,padding:12,fontSize:12}}>♻️ Reset Preds</button>}
                 {!u.referralCode&&<button onClick={()=>generateCode(u._id)} style={{...btn("#D4AF37","#000"),flex:1,padding:12,fontSize:12}}>🔗 Generate Code</button>}
               </>}
+              {!u.isBanned&&<button onClick={()=>setBanModal(u)} style={{...btn("#FF6B00"),padding:12,fontSize:12}}>🚫 Ban</button>}
+              {u.isBanned&&<button onClick={()=>unbanUser(u._id)} style={{...btn("#0B9635"),padding:12,fontSize:12}}>✅ Unban</button>}
               <button onClick={()=>remove(u._id)} style={{...btn("#AE0C0E"),padding:12,fontSize:12}}>🗑 Delete</button>
             </div>
+            {u.isBanned&&<div style={{background:"#FF6B0010",border:"1px solid #FF6B0025",borderRadius:10,padding:12,marginTop:12}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#FF6B00",marginBottom:4}}>BANNED</div>
+              <div style={{fontSize:12,color:"#888"}}>Reason: {u.banReason||"—"}</div>
+              {u.bannedUntil&&<div style={{fontSize:12,color:"#888"}}>Until: {fDate(u.bannedUntil)}</div>}
+              {u.bannedIP&&<div style={{fontSize:12,color:"#888"}}>IP Banned: {u.bannedIP}</div>}
+            </div>}
           </div>
         </div>
       );})()}
+
+      {/* ═══ BAN USER MODAL ═══ */}
+      {banModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",backdropFilter:"blur(6px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:300,padding:20}} onClick={()=>setBanModal(null)}>
+          <div style={{background:"#12141A",border:"1px solid #FF6B0030",borderRadius:20,padding:28,maxWidth:420,width:"100%",animation:"scaleIn .3s cubic-bezier(.16,1,.3,1)"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:32,textAlign:"center",marginBottom:8}}>🚫</div>
+            <h2 style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:2,textAlign:"center",marginBottom:4}}>Ban User</h2>
+            <p style={{textAlign:"center",fontSize:13,color:"#555",marginBottom:20}}>Ban <strong style={{color:"#FF6B00"}}>{banModal.name}</strong> ({banModal.phone})</p>
+
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:4}}>REASON</label>
+              <input value={banForm.reason} onChange={e=>setBanForm(f=>({...f,reason:e.target.value}))} placeholder="e.g. Fake payment screenshot" style={{width:"100%",padding:12,background:"#0B0D10",border:"1px solid #1E2028",borderRadius:10,color:"#F0F0F2",fontSize:13,fontFamily:"'DM Sans'",outline:"none"}} />
+            </div>
+
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:4}}>DURATION (HOURS) — Leave empty for permanent</label>
+              <input value={banForm.hours} onChange={e=>setBanForm(f=>({...f,hours:e.target.value}))} placeholder="e.g. 24 (or empty for permanent)" type="number" style={{width:"100%",padding:12,background:"#0B0D10",border:"1px solid #1E2028",borderRadius:10,color:"#F0F0F2",fontSize:13,fontFamily:"'DM Sans'",outline:"none"}} />
+            </div>
+
+            <div style={{marginBottom:20,display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setBanForm(f=>({...f,banIP:!f.banIP}))}>
+              <div style={{width:20,height:20,borderRadius:4,border:banForm.banIP?"2px solid #FF6B00":"2px solid #333",background:banForm.banIP?"#FF6B00":"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#000",fontWeight:700}}>{banForm.banIP?"✓":""}</div>
+              <span style={{fontSize:13,color:"#888"}}>Also ban user's IP address (blocks login from same network)</span>
+            </div>
+
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setBanModal(null)} style={{flex:1,padding:14,background:"transparent",border:"1px solid #1E2028",borderRadius:10,color:"#555",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans'"}}>Cancel</button>
+              <button onClick={banUser} style={{flex:2,padding:14,background:"#FF6B00",border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans'"}}>🚫 Confirm Ban</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ CREATE ROUND MODAL ═══ */}
       {modal&&(
