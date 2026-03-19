@@ -23,6 +23,8 @@ export default function SignupPage() {
   const [form, setForm] = useState({ name:"", email:"", phone:"", password:"", confirm:"", referral:"" });
   const [refNum, setRefNum] = useState("");
   const [senderName, setSenderName] = useState("");
+  const [payScreenshot, setPayScreenshot] = useState(null);
+  const [payPreview, setPayPreview] = useState(null);
   const [created, setCreated] = useState(null);
   const [copied, setCopied] = useState(null);
   const [timer, setTimer] = useState(1800);
@@ -49,6 +51,16 @@ export default function SignupPage() {
     return () => {};
   }, [step]);
 
+  const handleScreenshot = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setErr("Please upload an image file"); return; }
+    if (file.size > 10 * 1024 * 1024) { setErr("Image must be under 10MB"); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => { setPayScreenshot(ev.target.result); setPayPreview(URL.createObjectURL(file)); };
+    reader.readAsDataURL(file);
+  };
+
   const copy = (text, id) => {
     navigator.clipboard?.writeText(text).catch(() => {});
     setCopied(id);
@@ -68,11 +80,12 @@ export default function SignupPage() {
   const submit = async (e) => {
     e.preventDefault(); setErr("");
     if (!refNum.trim()) return setErr("Enter your transaction reference");
+    if (!payScreenshot) return setErr("Please upload your payment screenshot");
     setLoading(true);
     try {
       const res = await fetch("/api/users", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name:form.name, email:form.email, phone:form.phone, password:form.password, referenceNumber:refNum.trim(), paymentProvider:provider||"", senderName:senderName.trim(), referralUsed:form.referral||null }),
+        body: JSON.stringify({ name:form.name, email:form.email, phone:form.phone, password:form.password, referenceNumber:refNum.trim(), paymentProvider:provider||"", senderName:senderName.trim(), referralUsed:form.referral||null, paymentScreenshot:payScreenshot }),
       });
       const data = await res.json();
       if (!res.ok) { setErr(data.error || "Registration failed"); setLoading(false); return; }
@@ -283,6 +296,30 @@ export default function SignupPage() {
               <form onSubmit={submit}>
                 <div className="su-field"><label className="su-lbl">{pv.id==="mtn"?"Transaction Code":pv.id==="telecel"?"Transaction ID":"Reference Number"}</label><input className="su-inp" placeholder={pv.id==="mtn"?"e.g. 8374652910":pv.id==="telecel"?"e.g. 000012345678":"e.g. REF-123456"} value={refNum} onChange={e=>setRefNum(e.target.value)} style={{borderColor:pv.color+"30",fontFamily:"'Space Mono',monospace"}} /></div>
                 <div className="su-field"><label className="su-lbl">Sender Name (as on MoMo)</label><input className="su-inp" placeholder="e.g. Abel Afriyie" value={senderName} onChange={e=>setSenderName(e.target.value)} /></div>
+
+                <div className="su-field">
+                  <label className="su-lbl">Upload Payment Screenshot *</label>
+                  {!payPreview ? (
+                    <label style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"28px 16px",border:"2px dashed #E3172540",borderRadius:14,cursor:"pointer",background:"rgba(227,23,37,.03)",transition:"all .2s"}}>
+                      <div style={{fontSize:28,marginBottom:6}}>📤</div>
+                      <div style={{fontSize:13,fontWeight:600,color:"#888"}}>Tap to upload screenshot</div>
+                      <div style={{fontSize:11,color:"#444",marginTop:2}}>PNG, JPG, WEBP</div>
+                      <input type="file" accept="image/*" onChange={handleScreenshot} style={{display:"none"}} />
+                    </label>
+                  ) : (
+                    <div style={{position:"relative",borderRadius:14,overflow:"hidden",border:"2px solid #0B963530"}}>
+                      <img src={payPreview} alt="Payment proof" style={{width:"100%",maxHeight:200,objectFit:"contain",background:"#0B0D10"}} />
+                      <button type="button" onClick={()=>{setPayScreenshot(null);setPayPreview(null)}} style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:"50%",background:"#E31725",border:"none",color:"#fff",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+                      <div style={{padding:"8px 12px",background:"#0B963510",fontSize:12,fontWeight:600,color:"#0B9635",textAlign:"center"}}>Screenshot attached</div>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{background:"rgba(227,23,37,.04)",border:"1px solid rgba(227,23,37,.12)",borderRadius:12,padding:"12px 14px",marginBottom:16,fontSize:12,lineHeight:1.7}}>
+                  <div style={{fontWeight:700,color:"#E31725",marginBottom:2}}>WARNING</div>
+                  <div style={{color:"#888"}}>Uploading a fake or manipulated payment screenshot will result in an <strong style={{color:"#E31725"}}>immediate and permanent ban</strong>. You will lose access to the website and will not be able to register again, even with different details. All screenshots are verified manually.</div>
+                </div>
+
                 {err&&<div className="su-err">⚠ {err}</div>}
                 <div className="su-row">
                   <button type="button" className="su-btn su-btn-o" onClick={()=>{setErr("");setStep(2)}}>Back</button>

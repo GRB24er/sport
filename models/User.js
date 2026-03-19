@@ -43,6 +43,18 @@ const userSchema = new mongoose.Schema(
     referralTotalEarned: { type: Number, default: 0 },
     referralCount: { type: Number, default: 0 },
 
+    // Ban system
+    isBanned: { type: Boolean, default: false },
+    banReason: { type: String, default: "" },
+    bannedAt: { type: Date, default: null },
+    bannedUntil: { type: Date, default: null }, // null = permanent
+    bannedBy: { type: String, default: null },
+    bannedIP: { type: String, default: null },
+    lastLoginIP: { type: String, default: null },
+
+    // Payment screenshot for signup
+    paymentScreenshot: { type: String, default: "" }, // base64
+
     avatar: { type: String, default: "" },
     approvedAt: { type: Date, default: null },
     approvedBy: { type: String, default: null },

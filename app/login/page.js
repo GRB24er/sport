@@ -17,7 +17,9 @@ export default function LoginPage() {
     if (phone.length < 10) return setError("Enter a valid phone number.");
     setLoading(true);
     try {
-      const res = await signIn("credentials", { phone, password, redirect: false });
+      let clientIP = "";
+      try { const ipRes = await fetch("/api/auth/ip"); const ipData = await ipRes.json(); clientIP = ipData.ip || ""; } catch(e) {}
+      const res = await signIn("credentials", { phone, password, clientIP, redirect: false });
       if (res?.error) { setError(res.error); setLoading(false); return; }
       const sess = await fetch("/api/auth/session").then(r => r.json());
       if (sess?.user?.role === "admin") { router.push("/admin"); } else { router.push("/dashboard"); }

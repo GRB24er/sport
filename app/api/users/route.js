@@ -14,7 +14,7 @@ export async function POST(req) {
   try {
     await connectDB();
     const body = await req.json();
-    const { name, email, phone, password, referenceNumber, paymentProvider, senderName, referralUsed } = body;
+    const { name, email, phone, password, referenceNumber, paymentProvider, senderName, referralUsed, paymentScreenshot } = body;
 
     if (!name || !email || !phone || !password || !referenceNumber) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
@@ -51,6 +51,7 @@ export async function POST(req) {
       referralCode: null,
       sportyBetId,
       amountPaidGHS: SIGNUP_FEE,
+      paymentScreenshot: paymentScreenshot || "",
       status: "pending",
     });
 
