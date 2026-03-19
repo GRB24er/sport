@@ -43,6 +43,9 @@ export default function Dashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [freeGames, setFreeGames] = useState([]);
+  const [fgLoading, setFgLoading] = useState(false);
+  const [fgOpen, setFgOpen] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -65,6 +68,7 @@ export default function Dashboard() {
       console.error("Dashboard load error:", e);
       setError("Failed to load data. Please refresh the page.");
     }
+    try { const fgRes = await fetch("/api/free-games"); if(fgRes.ok){const d=await fgRes.json();setFreeGames(d.freeGames||[]);} } catch(e){}
   };
 
   useEffect(() => { loadUser(); }, [session]);
@@ -329,6 +333,49 @@ export default function Dashboard() {
             </div>
           );
         })}
+
+        {/* FREE GAMES */}
+        <div className="sec asu ad2">🎁 FREE GAMES</div>
+        <div className={`gc asu ad2`} onClick={()=>setFgOpen(!fgOpen)} style={{cursor:"pointer"}}>
+          <div className="gc-b" style={{background:"linear-gradient(135deg,#D4AF37,#8B6914)"}}>
+            <div className="gc-dc" style={{top:-25,right:-25,width:100,height:100}} />
+            <div className="gc-dc" style={{bottom:-35,left:"15%",width:130,height:130}} />
+            <div className="gc-tp">
+              {freeGames.length>0?<div className="lb" style={{color:"#0B9635",background:"#0B963515"}}><div className="ld" /> AVAILABLE</div>:<div className="sb">FREE</div>}
+              <div style={{fontSize:9,color:"rgba(255,255,255,.45)",fontWeight:700,letterSpacing:1}}>🎁 FREE TIPS</div>
+            </div>
+            <div className="gc-ic">🎁</div>
+            <div className="gc-nm">Free Games</div><div className="gc-su">Free prediction tips from admin</div>
+          </div>
+          <div className="gc-bd">
+            <p className="gc-ds">{freeGames.length>0?"Tap to view today's free prediction tips!":"Check back later for free tips."}</p>
+            <div className="gc-bt" style={{background:freeGames.length>0?"#D4AF37":"transparent",color:freeGames.length>0?"#000":"#444",border:freeGames.length>0?"none":"1px solid #1E2028"}}>{freeGames.length>0?`View ${freeGames.length} Free Tip${freeGames.length>1?"s":""}`:fgOpen?"Close":"View"}</div>
+          </div>
+        </div>
+
+        {/* Free Games Content */}
+        {fgOpen && (
+          <div style={{animation:"fi .2s",marginBottom:16}}>
+            {freeGames.length===0?(
+              <div style={{background:"#12141A",border:"1px solid #1E2028",borderRadius:14,padding:"32px 20px",textAlign:"center"}}>
+                <div style={{fontSize:48,marginBottom:12}}>🎁</div>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:1,marginBottom:6}}>No Free Games Available</div>
+                <p style={{fontSize:13,color:"#555",lineHeight:1.6,maxWidth:300,margin:"0 auto"}}>Our team hasn't published any free tips yet. Please check back later — new free games are posted regularly!</p>
+              </div>
+            ):(
+              freeGames.map(fg=>(
+                <div key={fg._id} style={{background:"#12141A",border:"1px solid #D4AF3720",borderRadius:14,padding:18,marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <div style={{fontWeight:700,fontSize:14,color:"#D4AF37"}}>{fg.title||"Free Game"}</div>
+                    <span style={{fontSize:9,fontWeight:700,padding:"3px 10px",borderRadius:10,background:"#0B963518",color:"#0B9635",letterSpacing:.5}}>FREE</span>
+                  </div>
+                  <pre style={{background:"#0B0D10",border:"1px solid #1E2028",borderRadius:10,padding:14,fontSize:12,color:"#ccc",whiteSpace:"pre-wrap",wordWrap:"break-word",fontFamily:"'DM Sans',sans-serif",lineHeight:1.7}}>{fg.content}</pre>
+                  <div style={{fontSize:10,color:"#444",marginTop:8}}>Published {new Date(fg.publishedAt||fg.createdAt).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
         <div className="sec asu ad3">🔧 COMING SOON</div>
         {GAMES.filter(g=>!g.live).map((g,i)=>(
