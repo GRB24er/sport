@@ -37,8 +37,8 @@ export default function App() {
         @keyframes softPulse{0%,100%{opacity:0.7}50%{opacity:1}}
 
         /* ── Buttons ── */
-        .btn-p{background:#E31725;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;letter-spacing:0.5px;transition:all 0.2s;padding:10px 24px;font-size:13px}
-        .btn-p:hover{background:#c8131f;transform:translateY(-1px);box-shadow:0 8px 24px rgba(227,23,37,0.3)}
+        .btn-p{background:#0B9635;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;letter-spacing:0.5px;transition:all 0.2s;padding:10px 24px;font-size:13px}
+        .btn-p:hover{background:#087a2a;transform:translateY(-1px);box-shadow:0 8px 24px rgba(11,150,53,0.3)}
         .btn-o{background:transparent;color:#F0F0F2;border:1px solid #3A3D44;border-radius:8px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s;padding:10px 24px;font-size:13px}
         .btn-o:hover{border-color:#F0F0F2}
 
@@ -196,17 +196,17 @@ export default function App() {
 
         {/* ═══ HERO ═══ */}
         <section style={{ position:"relative", overflow:"hidden" }}>
-          <div style={{ position:"absolute", top:"-20%", left:"15%", width:500, height:500, background:"radial-gradient(circle, #E3172512 0%, transparent 70%)", borderRadius:"50%", filter:"blur(80px)", pointerEvents:"none" }} />
+          <div style={{ position:"absolute", top:"-20%", left:"15%", width:500, height:500, background:"radial-gradient(circle, #0B963512 0%, transparent 70%)", borderRadius:"50%", filter:"blur(80px)", pointerEvents:"none" }} />
           <div style={{ position:"absolute", bottom:"-10%", right:"10%", width:400, height:400, background:"radial-gradient(circle, #0B963508 0%, transparent 70%)", borderRadius:"50%", filter:"blur(60px)", pointerEvents:"none" }} />
 
           <div className="vb-hero-flex">
             <div className="vb-hero-text" style={{ opacity:show?1:0, transform:show?"none":"translateY(30px)", transition:"all 0.9s cubic-bezier(0.16,1,0.3,1)" }}>
-              <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#E3172510", border:"1px solid #E3172525", borderRadius:6, padding:"5px 14px", marginBottom:20 }}>
-                <span style={{ width:6, height:6, borderRadius:"50%", background:"#E31725", animation:"softPulse 2s infinite" }} />
-                <span style={{ fontSize:11, color:"#E31725", fontWeight:700, letterSpacing:2 }}>LIVE AI PREDICTIONS</span>
+              <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"#0B963510", border:"1px solid #0B963525", borderRadius:6, padding:"5px 14px", marginBottom:20 }}>
+                <span style={{ width:6, height:6, borderRadius:"50%", background:"#0B9635", animation:"softPulse 2s infinite" }} />
+                <span style={{ fontSize:11, color:"#0B9635", fontWeight:700, letterSpacing:2 }}>LIVE AI PREDICTIONS</span>
               </div>
 
-              <h1 className="vb-hero-h1">SPORTYBET<br/><span style={{ color:"#E31725" }}>INSTANT FOOTBALL</span></h1>
+              <h1 className="vb-hero-h1">SPORTYBET<br/><span style={{ color:"#D4AF37" }}>INSTANT FOOTBALL</span></h1>
 
               <p className="vb-hero-p">
                 Our AI hacks the prediction system instantly using your SportyBet screenshot as reference. Upload from your phone. Get winning predictions. Collect your money.
@@ -230,7 +230,7 @@ export default function App() {
             <div className="vb-hero-phone" style={{ opacity:show?1:0, transform:show?"none":"translateX(50px)", transition:"all 1s 0.2s cubic-bezier(0.16,1,0.3,1)" }}>
               <div className="vb-phone-frame">
                 <div className="vb-phone-inner">
-                  <div style={{ background:"#E31725", padding:"8px 14px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <div style={{ background:"#0B9635", padding:"8px 14px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                     <span style={{ color:"#fff", fontSize:11, fontWeight:700 }}>Bet History</span>
                     <span style={{ color:"#fff", fontSize:11, fontWeight:700 }}>GHS 7,256.10</span>
                   </div>
@@ -256,7 +256,7 @@ export default function App() {
         {/* ═══ HOW IT WORKS ═══ */}
         <section id="how-it-works" className="vb-section">
           <div className="vb-section-inner">
-            <p className="vb-section-label" style={{ color:"#E31725" }}>HOW IT WORKS</p>
+            <p className="vb-section-label" style={{ color:"#D4AF37" }}>HOW IT WORKS</p>
             <h2 className="vb-section-title">4 Steps. That's It.</h2>
             <div className="vb-steps">
               {[
@@ -267,7 +267,7 @@ export default function App() {
               ].map(s=>(
                 <div key={s.n} className="vb-step">
                   <div style={{ fontSize:36, marginBottom:10 }}>{s.icon}</div>
-                  <div style={{ fontSize:10, color:"#E31725", fontWeight:700, letterSpacing:3, marginBottom:6 }}>STEP {s.n}</div>
+                  <div style={{ fontSize:10, color:"#D4AF37", fontWeight:700, letterSpacing:3, marginBottom:6 }}>STEP {s.n}</div>
                   <div style={{ fontWeight:700, fontSize:15, marginBottom:6 }}>{s.title}</div>
                   <div style={{ color:"#555", fontSize:13, lineHeight:1.5 }}>{s.desc}</div>
                 </div>
