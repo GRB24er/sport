@@ -39,6 +39,8 @@ export default function Dashboard() {
   const [selProv, setSelProv] = useState(null);
   const [refNum, setRefNum] = useState("");
   const [senderName, setSenderName] = useState("");
+  const [payScreenshot, setPayScreenshot] = useState(null);
+  const [payPreview, setPayPreview] = useState(null);
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -119,18 +121,30 @@ export default function Dashboard() {
     if (gameHasPkg(game.id)) { router.push("/dashboard/predict?game=" + game.id); return; }
     if (gameIsPending(game.id)) return;
     setSubModal(game);
-    setSelPkg(null); setSelProv(null); setRefNum(""); setSenderName(""); setStep(1); setSubmitted(false); setError("");
+    setSelPkg(null); setSelProv(null); setRefNum(""); setSenderName(""); setPayScreenshot(null); setPayPreview(null); setStep(1); setSubmitted(false); setError("");
   };
 
-  const closeSub = () => { setSubModal(null); setSelPkg(null); setSelProv(null); setRefNum(""); setSenderName(""); setStep(1); setSubmitted(false); setError(""); };
+  const closeSub = () => { setSubModal(null); setSelPkg(null); setSelProv(null); setRefNum(""); setSenderName(""); setPayScreenshot(null); setPayPreview(null); setStep(1); setSubmitted(false); setError(""); };
+
+  const handlePayScreenshot = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setError("Please upload an image file."); return; }
+    if (file.size > 10 * 1024 * 1024) { setError("Screenshot must be under 10MB."); return; }
+    setError("");
+    const reader = new FileReader();
+    reader.onload = (ev) => { setPayScreenshot(ev.target.result); setPayPreview(ev.target.result); };
+    reader.readAsDataURL(file);
+  };
 
   const submitRef = async () => {
     if (!refNum.trim()) { setError("Enter your transaction code or reference."); return; }
+    if (!payScreenshot) { setError("Upload your payment screenshot for verification."); return; }
     setError(""); setSubmitting(true);
     try {
       const res = await fetch("/api/packages", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gameId: subModal.id, packageId: selPkg, paymentProvider: selProv, referenceNumber: refNum.trim(), senderName: senderName.trim() }),
+        body: JSON.stringify({ gameId: subModal.id, packageId: selPkg, paymentProvider: selProv, referenceNumber: refNum.trim(), senderName: senderName.trim(), paymentScreenshot: payScreenshot }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Failed"); setSubmitting(false); return; }
@@ -418,9 +432,33 @@ export default function Dashboard() {
               <div style={{background:pv?.color+"08",border:`1px solid ${pv?.color}20`,borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10}}><div className="pv-d" style={{background:pv?.color,flexShrink:0}} /><div><div style={{fontWeight:700,fontSize:13,color:pv?.color}}>{pv?.name}</div><div style={{fontSize:11,color:"#555"}}>{subModal.icon} {subModal.name} — {p.icon} {p.name} — {fG(p.price)}</div></div></div>
               <div style={{marginBottom:14}}><label style={{display:"block",fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:5}}>{pv?.refLabel||"REFERENCE"}</label><input className="inp" placeholder={pv?.refPlaceholder||"e.g. REF-123456"} value={refNum} onChange={e=>setRefNum(e.target.value)} /></div>
               <div style={{marginBottom:14}}><label style={{display:"block",fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:5}}>SENDER / MERCHANT NAME</label><input className="inp" placeholder="Name on the transaction" value={senderName} onChange={e=>setSenderName(e.target.value)} /></div>
-              <div className="warn">🔒 Admin will verify and activate your {subModal.name} package. Usually 5–30 minutes.</div>
+
+              <div style={{marginBottom:14}}>
+                <label style={{display:"block",fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:5}}>PAYMENT SCREENSHOT *</label>
+                {!payPreview ? (
+                  <label style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px 16px",border:"2px dashed #E3172540",borderRadius:12,cursor:"pointer",background:"rgba(227,23,37,.03)",transition:"all .2s"}}>
+                    <div style={{fontSize:28,marginBottom:4}}>📤</div>
+                    <div style={{fontSize:12,fontWeight:600,color:"#888"}}>Tap to upload screenshot</div>
+                    <div style={{fontSize:10,color:"#444",marginTop:2}}>PNG, JPG, WEBP — Max 10MB</div>
+                    <input type="file" accept="image/*" onChange={handlePayScreenshot} style={{display:"none"}} />
+                  </label>
+                ) : (
+                  <div style={{position:"relative",borderRadius:12,overflow:"hidden",border:"2px solid #0B963530"}}>
+                    <img src={payPreview} alt="Payment proof" style={{width:"100%",maxHeight:180,objectFit:"contain",background:"#0B0D10"}} />
+                    <button type="button" onClick={()=>{setPayScreenshot(null);setPayPreview(null)}} style={{position:"absolute",top:6,right:6,width:26,height:26,borderRadius:"50%",background:"#E31725",border:"none",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+                    <div style={{padding:"6px 10px",background:"#0B963510",fontSize:11,fontWeight:600,color:"#0B9635",textAlign:"center"}}>✓ Screenshot attached</div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{background:"rgba(227,23,37,.04)",border:"1px solid rgba(227,23,37,.12)",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:11,lineHeight:1.7}}>
+                <div style={{fontWeight:700,color:"#E31725",marginBottom:2}}>⚠ WARNING</div>
+                <div style={{color:"#888"}}>Uploading a fake or manipulated payment screenshot will result in an <strong style={{color:"#E31725"}}>immediate and permanent ban</strong>. All screenshots are verified manually by admin.</div>
+              </div>
+
+              <div className="warn">🔒 Admin will verify your screenshot and activate your {subModal.name} package. Usually 5–30 minutes.</div>
               {error && <div className="err">⚠ {error}</div>}
-              <button className="ab" disabled={submitting||!refNum.trim()} onClick={submitRef} style={{background:refNum.trim()?"#0B9635":"#151820",color:refNum.trim()?"#fff":"#444"}}>{submitting?"Submitting...":"Submit Reference"}</button>
+              <button className="ab" disabled={submitting||!refNum.trim()||!payScreenshot} onClick={submitRef} style={{background:(refNum.trim()&&payScreenshot)?"#0B9635":"#151820",color:(refNum.trim()&&payScreenshot)?"#fff":"#444"}}>{submitting?"Submitting...":"Submit Payment Proof"}</button>
               <button className="bb" onClick={()=>setStep(2)}>← Back</button>
             </div>);})()}
 

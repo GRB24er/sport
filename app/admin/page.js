@@ -870,6 +870,21 @@ export default function AdminDash() {
                     </div>
                   </div>
 
+                  {r.paymentScreenshot && (
+                    <div style={{marginBottom:14}}>
+                      <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:6}}>📸 PAYMENT SCREENSHOT</div>
+                      <div style={{borderRadius:12,overflow:"hidden",border:"1px solid #1E2028",background:"#0B0D10"}}>
+                        <img src={r.paymentScreenshot} alt="Payment proof" style={{width:"100%",maxHeight:300,objectFit:"contain",display:"block"}} />
+                      </div>
+                    </div>
+                  )}
+
+                  {!r.paymentScreenshot && (
+                    <div style={{background:"#E3172510",border:"1px solid #E3172520",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#E31725",lineHeight:1.6}}>
+                      ⚠ <strong>No screenshot submitted.</strong> This request was made before screenshot verification was required.
+                    </div>
+                  )}
+
                   <div style={{background:"#D4AF3708",border:"1px solid #D4AF3718",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:12,color:"#D4AF37",lineHeight:1.6}}>
                     💡 <strong>Verify:</strong> Check {r.providerName} for {r.paymentProvider==="mtn"?"code":"ID"} <strong>{r.referenceNumber}</strong>{r.senderName?` from ${r.senderName}`:""} — <strong>GH₵{r.packagePrice}</strong> for {r.gameName}
                   </div>

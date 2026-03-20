@@ -35,10 +35,13 @@ export async function POST(req) {
 
     await connectDB();
     const PKG_PRICES = await getPkgPrices();
-    const { gameId, packageId, paymentProvider, referenceNumber, senderName } = await req.json();
+    const { gameId, packageId, paymentProvider, referenceNumber, senderName, paymentScreenshot } = await req.json();
 
     if (!gameId || !packageId || !paymentProvider || !referenceNumber) {
       return NextResponse.json({ error: "All fields required" }, { status: 400 });
+    }
+    if (!paymentScreenshot) {
+      return NextResponse.json({ error: "Payment screenshot is required for verification" }, { status: 400 });
     }
     if (!PKG_PRICES[packageId]) return NextResponse.json({ error: "Invalid package" }, { status: 400 });
     if (!GAME_NAMES[gameId]) return NextResponse.json({ error: "Invalid game" }, { status: 400 });
@@ -54,7 +57,7 @@ export async function POST(req) {
 
     const updateKey = `pendingGamePackages.${gameId}`;
     await User.updateOne({ _id: user._id }, {
-      $set: { [updateKey]: { package: packageId, referenceNumber, paymentProvider, senderName: senderName || "", date: new Date() } }
+      $set: { [updateKey]: { package: packageId, referenceNumber, paymentProvider, senderName: senderName || "", paymentScreenshot, date: new Date() } }
     });
 
     const provLabel = PROV_NAMES[paymentProvider] || paymentProvider;
@@ -102,7 +105,7 @@ export async function GET(req) {
             packageId: r.package, packageName: PKG_NAMES[r.package] || r.package, packagePrice: PKG_PRICES[r.package] || 0,
             referenceNumber: r.referenceNumber, paymentProvider: r.paymentProvider,
             providerName: PROV_NAMES[r.paymentProvider] || r.paymentProvider,
-            senderName: r.senderName || "", date: r.date,
+            senderName: r.senderName || "", paymentScreenshot: r.paymentScreenshot || null, date: r.date,
           });
         }
       }
