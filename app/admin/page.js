@@ -435,6 +435,34 @@ export default function AdminDash() {
               ))}
             </div>
 
+            {/* Quick user search on dashboard */}
+            <div style={{marginBottom:16}}>
+              <div style={section}>🔍 QUICK USER SEARCH</div>
+              <div style={{...card,padding:16}}>
+                <div style={{position:"relative",marginBottom:userSearch.trim()&&filtered.length>0?12:0}}>
+                  <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",fontSize:14,color:"#444"}}>🔍</span>
+                  <input placeholder="Search users by name, phone, email or referral code..." value={userSearch} onChange={e=>setUserSearch(e.target.value)} style={{width:"100%",padding:"12px 14px 12px 38px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:10,color:"#F0F0F2",fontSize:13,fontFamily:"'DM Sans'",outline:"none"}} />
+                  {userSearch&&<button onClick={()=>setUserSearch("")} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:16}}>✕</button>}
+                </div>
+                {userSearch.trim()&&(<div>
+                  <div style={{fontSize:11,color:"#444",marginBottom:8}}>{filtered.length} result{filtered.length!==1?"s":""} found</div>
+                  {filtered.slice(0,10).map(u=>{const p=getPkg(u.package);return(
+                    <div key={u._id} onClick={()=>setUserModal(u)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",borderRadius:10,marginBottom:6,background:"#0B0D10",border:"1px solid #1E2028",cursor:"pointer",transition:"border-color .2s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#D4AF3740"} onMouseLeave={e=>e.currentTarget.style.borderColor="#1E2028"}>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:700,fontSize:14}}>{u.name} <span style={{color:"#444",fontWeight:400,fontSize:12}}>({u.phone})</span></div>
+                        <div style={{fontSize:11,color:"#555",marginTop:2}}>{u.email||"No email"} • {p.icon} {p.name} • Joined {tAgo(u.createdAt)}{u.referralCode?` • Code: ${u.referralCode}`:""}</div>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <span style={badge(u.isBanned?"#FF6B0018":u.status==="approved"?"#0B963518":u.status==="pending"?"#D4AF3718":"#E3172518",u.isBanned?"#FF6B00":u.status==="approved"?"#0B9635":u.status==="pending"?"#D4AF37":"#E31725")}>{u.isBanned?"banned":u.status}</span>
+                        <span style={{fontSize:12,color:"#0B9635",fontWeight:700}}>{fG(FEE+p.price)}</span>
+                      </div>
+                    </div>
+                  );})}
+                  {filtered.length>10&&<button onClick={()=>{setTab("users")}} style={{...btn("#151820","#888"),width:"100%",marginTop:4}}>View all {filtered.length} results in Users tab</button>}
+                </div>)}
+              </div>
+            </div>
+
             {/* Pending alerts */}
             {pending.length>0&&(<div>
               <div style={{...section,color:"#E31725"}}>🔴 PENDING APPROVALS ({pending.length})</div>
