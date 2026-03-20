@@ -70,7 +70,7 @@ export async function POST(req) {
 
     await Notification.create({
       type: "system",
-      message: `Your ${PKG_NAMES[packageId]} for ${GAME_NAMES[gameId]} is submitted. Ref: ${referenceNumber}. Admin will verify shortly.`,
+      message: `Your ${PKG_NAMES[packageId]} for ${GAME_NAMES[gameId]} is submitted. Ref: ${referenceNumber}. Your package will be activated shortly.`,
       forUserId: user._id,
     });
 

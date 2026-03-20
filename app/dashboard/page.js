@@ -428,7 +428,7 @@ export default function Dashboard() {
             </div>);})()}
 
             {step===3 && !submitted && (()=>{const p=PKGS.find(x=>x.id===selPkg);const pv=PROVS.find(x=>x.id===selProv);return(<div style={{animation:"fi .2s"}}>
-              <div style={{textAlign:"center",marginBottom:16}}><div style={{fontSize:32,marginBottom:4}}>📋</div><div className="mm-ti">Submit Reference</div><p className="mm-su">Enter your <strong style={{color:pv?.color}}>{pv?.name}</strong> transaction details</p></div>
+              <div style={{textAlign:"center",marginBottom:16}}><div style={{fontSize:32,marginBottom:4}}>📋</div><div className="mm-ti">Submit Payment Proof</div><p className="mm-su">Enter your <strong style={{color:pv?.color}}>{pv?.name}</strong> transaction details & upload screenshot</p></div>
               <div style={{background:pv?.color+"08",border:`1px solid ${pv?.color}20`,borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10}}><div className="pv-d" style={{background:pv?.color,flexShrink:0}} /><div><div style={{fontWeight:700,fontSize:13,color:pv?.color}}>{pv?.name}</div><div style={{fontSize:11,color:"#555"}}>{subModal.icon} {subModal.name} — {p.icon} {p.name} — {fG(p.price)}</div></div></div>
               <div style={{marginBottom:14}}><label style={{display:"block",fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:5}}>{pv?.refLabel||"REFERENCE"}</label><input className="inp" placeholder={pv?.refPlaceholder||"e.g. REF-123456"} value={refNum} onChange={e=>setRefNum(e.target.value)} /></div>
               <div style={{marginBottom:14}}><label style={{display:"block",fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:5}}>SENDER / MERCHANT NAME</label><input className="inp" placeholder="Name on the transaction" value={senderName} onChange={e=>setSenderName(e.target.value)} /></div>
@@ -456,7 +456,7 @@ export default function Dashboard() {
                 <div style={{color:"#888"}}>Uploading a fake or manipulated payment screenshot will result in an <strong style={{color:"#E31725"}}>immediate and permanent ban</strong>. All screenshots are verified manually by admin.</div>
               </div>
 
-              <div className="warn">🔒 Admin will verify your screenshot and activate your {subModal.name} package. Usually 5–30 minutes.</div>
+              <div className="warn">🔒 Your payment is being processed. Your {subModal.name} package will be activated within 5–30 minutes.</div>
               {error && <div className="err">⚠ {error}</div>}
               <button className="ab" disabled={submitting||!refNum.trim()||!payScreenshot} onClick={submitRef} style={{background:(refNum.trim()&&payScreenshot)?"#0B9635":"#151820",color:(refNum.trim()&&payScreenshot)?"#fff":"#444"}}>{submitting?"Submitting...":"Submit Payment Proof"}</button>
               <button className="bb" onClick={()=>setStep(2)}>← Back</button>
