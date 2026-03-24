@@ -52,7 +52,7 @@ export async function GET() {
       // 1. Users — only fields the dashboard needs (skip password, avatar, etc.)
       // No limit — revenue and user list need ALL users
       User.find({})
-        .select("name phone email status amountPaidGHS referredBy referralCode gamePackages pendingGamePackages sportyBetId referenceNumber paymentProvider createdAt approvedAt isBanned banReason bannedAt bannedUntil bannedIP lastLoginIP paymentScreenshot")
+        .select("name phone email status amountPaidGHS referredBy referralCode gamePackages pendingGamePackages sportyBetId referenceNumber paymentProvider createdAt approvedAt isBanned banReason bannedAt bannedUntil bannedIP lastLoginIP")
         .sort({ createdAt: -1 }).lean(),
       // 2. Uploads — EXCLUDE imageData (base64 screenshots are 500KB-2MB each!)
       Upload.find({})

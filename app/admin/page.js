@@ -56,6 +56,18 @@ export default function AdminDash() {
   const [dataLoaded,setDataLoaded] = useState(false);
   const [uploadsWithImages,setUploadsWithImages] = useState(null);
   const [loadingImages,setLoadingImages] = useState(false);
+  const [modalScreenshot,setModalScreenshot] = useState(null);
+
+  // Fetch payment screenshot on demand when user modal opens
+  useEffect(() => {
+    if (!userModal?._id) { setModalScreenshot(null); return; }
+    let cancelled = false;
+    fetch(`/api/users/${userModal._id}`)
+      .then(r => r.json())
+      .then(d => { if (!cancelled) setModalScreenshot(d.user?.paymentScreenshot || d.paymentScreenshot || null); })
+      .catch(() => { if (!cancelled) setModalScreenshot(null); });
+    return () => { cancelled = true; };
+  }, [userModal?._id]);
 
   useEffect(() => {
     if(status==="unauthenticated") router.push("/login");
@@ -1150,9 +1162,9 @@ export default function AdminDash() {
                 </div>
               ))}
             </div>
-            {u.paymentScreenshot&&<div style={{marginBottom:16}}>
+            {modalScreenshot&&<div style={{marginBottom:16}}>
               <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:6}}>PAYMENT SCREENSHOT</div>
-              <img src={u.paymentScreenshot} alt="Payment proof" style={{width:"100%",maxHeight:300,objectFit:"contain",borderRadius:12,border:"1px solid #1E2028",background:"#0B0D10"}} />
+              <img src={modalScreenshot} alt="Payment proof" style={{width:"100%",maxHeight:300,objectFit:"contain",borderRadius:12,border:"1px solid #1E2028",background:"#0B0D10"}} />
             </div>}
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
               {u.status==="pending"&&<button onClick={()=>{approve(u._id);setUserModal(null)}} style={{...btn("#0B9635"),flex:1,padding:12,fontSize:13}}>✓ Approve</button>}
