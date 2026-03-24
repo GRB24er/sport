@@ -7,9 +7,7 @@ const R = 0.077;
 const DEF_FEE = 50;
 
 const DEF_PROVS = [
-  { id:"mtn", name:"MTN Mobile Money", short:"MTN MoMo", number:"0547610318", acct:"Abel Afriyie", color:"#FFC300", dark:"#B38F00", bg:"linear-gradient(135deg,#FFC300,#FFD700)", icon:"📱", dial:"*170#", steps:["Dial *170# on your MTN line","Select 1 → Transfer Money","Select 1 → MoMo User","Enter the number shown above","Enter the exact amount","Add reference as note","Confirm name matches","Enter PIN to complete"] },
-  { id:"telecel", name:"Telecel Cash", short:"Telecel", number:"0503994665", acct:"Abel Afriyie", color:"#E40521", dark:"#8B0315", bg:"linear-gradient(135deg,#E40521,#FF1744)", icon:"💳", dial:"*110#", steps:["Dial *110# on your Telecel line","Select Transfer/Send Money","Enter the number shown above","Enter the exact amount","Add reference as note","Confirm and enter PIN"] },
-  { id:"airteltigo", name:"AirtelTigo Money", short:"AirtelTigo", number:"", acct:"", color:"#0056A3", dark:"#003366", bg:"linear-gradient(135deg,#0056A3,#0077CC)", icon:"📲", dial:"*500#", steps:["Dial *500# on your AirtelTigo line","Select Send Money","Enter the number shown above","Enter the exact amount","Confirm and enter PIN"] },
+  { id:"telecel", name:"Telecel Cash", short:"Telecel", number:"0503994665", acct:"ABEL AFRIYIE", color:"#E40521", dark:"#8B0315", bg:"linear-gradient(135deg,#E40521,#FF1744)", icon:"💳", dial:"*110#", steps:["Dial *110# on your Telecel line","Select Transfer/Send Money","Enter the number shown above","Enter the exact amount","Add reference as note","Confirm and enter PIN"] },
 ];
 
 export default function SignupPage() {
@@ -36,10 +34,8 @@ export default function SignupPage() {
   const FEE = s.signupFeeGHS || DEF_FEE;
   const FEE_USD = (FEE * R).toFixed(2);
   const PROVS = [
-    { ...DEF_PROVS[0], number: s.mtnNumber || DEF_PROVS[0].number, acct: s.mtnName || DEF_PROVS[0].acct },
-    { ...DEF_PROVS[1], number: s.telecelNumber || DEF_PROVS[1].number, acct: s.telecelName || DEF_PROVS[1].acct },
-    { ...DEF_PROVS[2], number: s.airteltigoNumber || DEF_PROVS[2].number, acct: s.airteltigoName || DEF_PROVS[2].acct },
-  ].filter(p => p.number);
+    { ...DEF_PROVS[0], number: s.telecelNumber || DEF_PROVS[0].number, acct: s.telecelName || DEF_PROVS[0].acct },
+  ];
 
   const pv = PROVS.find(p => p.id === provider);
   const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));

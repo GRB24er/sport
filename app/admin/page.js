@@ -1131,21 +1131,9 @@ export default function AdminDash() {
               ].map(f=>(<div key={f.k}><label style={{...lbl,display:"block",marginBottom:4}}>{f.l}</label><input type={f.type||"text"} value={settingsForm[f.k]||""} onChange={e=>setSettingsForm(s=>({...s,[f.k]:f.type==="number"?Number(e.target.value):e.target.value}))} style={{width:"100%",padding:"10px 12px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:8,color:"#F0F0F2",fontSize:13,fontFamily:"'DM Sans'",outline:"none"}} /></div>))}</div>
             </div>
 
-            <div style={{...card,borderColor:"#FFC30020"}}><div style={{fontSize:12,fontWeight:700,color:"#FFC300",marginBottom:14}}>💳 MTN MOBILE MONEY</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>{[
-                {l:"Number",k:"mtnNumber"},{l:"Account Name",k:"mtnName"},
-              ].map(f=>(<div key={f.k}><label style={{...lbl,display:"block",marginBottom:4}}>{f.l}</label><input value={settingsForm[f.k]||""} onChange={e=>setSettingsForm(s=>({...s,[f.k]:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:8,color:"#F0F0F2",fontSize:13,fontFamily:"'DM Sans'",outline:"none"}} /></div>))}</div>
-            </div>
-
             <div style={{...card,borderColor:"#E4052120"}}><div style={{fontSize:12,fontWeight:700,color:"#E40521",marginBottom:14}}>💳 TELECEL CASH</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>{[
                 {l:"Number",k:"telecelNumber"},{l:"Account Name",k:"telecelName"},
-              ].map(f=>(<div key={f.k}><label style={{...lbl,display:"block",marginBottom:4}}>{f.l}</label><input value={settingsForm[f.k]||""} onChange={e=>setSettingsForm(s=>({...s,[f.k]:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:8,color:"#F0F0F2",fontSize:13,fontFamily:"'DM Sans'",outline:"none"}} /></div>))}</div>
-            </div>
-
-            <div style={{...card,borderColor:"#0056A320"}}><div style={{fontSize:12,fontWeight:700,color:"#0056A3",marginBottom:14}}>💳 AIRTELTIGO MONEY</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>{[
-                {l:"Number",k:"airteltigoNumber"},{l:"Account Name",k:"airteltigoName"},
               ].map(f=>(<div key={f.k}><label style={{...lbl,display:"block",marginBottom:4}}>{f.l}</label><input value={settingsForm[f.k]||""} onChange={e=>setSettingsForm(s=>({...s,[f.k]:e.target.value}))} style={{width:"100%",padding:"10px 12px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:8,color:"#F0F0F2",fontSize:13,fontFamily:"'DM Sans'",outline:"none"}} /></div>))}</div>
             </div>
 
