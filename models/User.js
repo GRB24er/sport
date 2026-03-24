@@ -12,6 +12,7 @@ const pendingRequestSchema = new mongoose.Schema({
   referenceNumber: { type: String, required: true },
   paymentProvider: { type: String, required: true },
   senderName: { type: String, default: "" },
+  paymentScreenshot: { type: String, default: "" },
   date: { type: Date, default: Date.now },
 }, { _id: false });
 

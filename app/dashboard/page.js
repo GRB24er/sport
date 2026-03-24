@@ -410,11 +410,11 @@ export default function Dashboard() {
                 <div key={p.id} className={`pk ${s?"on":""}`} onClick={()=>setSelPkg(p.id)} style={{borderColor:s?p.color:"#1E2028",background:s?p.color+"10":"#0B0D10"}}>
                   <div className="pk-i">{p.icon}</div><div className="pk-n" style={{color:p.color}}>{p.name}</div><div className="pk-o">{p.odds}</div><div className="pk-p">{fG(p.price)}</div><div className="pk-u">≈ ${(p.price*R).toFixed(2)}</div><div className="pk-d">{p.max} pred{p.max>1?"s":""}</div>{s&&<div className="pk-c" style={{color:p.color}}>✓</div>}
                 </div>);})}</div>
-              {selPkg&&(()=>{const p=PKGS.find(x=>x.id===selPkg);return(<div className="det"><div className="det-l" style={{color:p.color}}>{p.icon} {p.name.toUpperCase()}</div>{p.features.map(f=><div key={f} className="det-f"><span style={{color:"#0B9635"}}>✓</span>{f}</div>)}<div className="det-t"><span style={{color:"#555",fontWeight:600}}>Total</span><span style={{fontFamily:"'Bebas Neue'",fontSize:22,color:"#0B9635",letterSpacing:1}}>{fB(p.price)}</span></div></div>);})()}
+              {selPkg&&(()=>{const p=PKGS.find(x=>x.id===selPkg);if(!p)return null;return(<div className="det"><div className="det-l" style={{color:p.color}}>{p.icon} {p.name.toUpperCase()}</div>{p.features.map(f=><div key={f} className="det-f"><span style={{color:"#0B9635"}}>✓</span>{f}</div>)}<div className="det-t"><span style={{color:"#555",fontWeight:600}}>Total</span><span style={{fontFamily:"'Bebas Neue'",fontSize:22,color:"#0B9635",letterSpacing:1}}>{fB(p.price)}</span></div></div>);})()}
               <button className="ab" disabled={!selPkg} onClick={()=>setStep(2)} style={{background:selPkg?"#E31725":"#151820",color:selPkg?"#fff":"#444"}}>Continue to Payment →</button>
             </div>)}
 
-            {step===2 && !submitted && (()=>{const p=PKGS.find(x=>x.id===selPkg);return(<div style={{animation:"fi .2s"}}>
+            {step===2 && !submitted && (()=>{const p=PKGS.find(x=>x.id===selPkg);if(!p)return null;return(<div style={{animation:"fi .2s"}}>
               <div style={{textAlign:"center",marginBottom:16}}><div style={{fontSize:32,marginBottom:4}}>💳</div><div className="mm-ti">Payment</div><p className="mm-su">Send <strong style={{color:"#0B9635"}}>{fB(p.price)}</strong> for {subModal.icon} {subModal.name}</p></div>
               <div style={{background:"#0B0D10",border:"1px solid #151820",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><span style={{fontSize:11,color:"#555"}}>{subModal.icon} {subModal.name}:</span> <span style={{fontWeight:700,color:p.color}}>{p.icon} {p.name}</span></div><span style={{fontFamily:"'Bebas Neue'",fontSize:18,color:"#0B9635"}}>{fG(p.price)}</span></div>
               <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:8}}>SELECT PAYMENT METHOD</div>
@@ -427,7 +427,7 @@ export default function Dashboard() {
               <button className="bb" onClick={()=>setStep(1)}>← Back</button>
             </div>);})()}
 
-            {step===3 && !submitted && (()=>{const p=PKGS.find(x=>x.id===selPkg);const pv=PROVS.find(x=>x.id===selProv);return(<div style={{animation:"fi .2s"}}>
+            {step===3 && !submitted && (()=>{const p=PKGS.find(x=>x.id===selPkg);const pv=PROVS.find(x=>x.id===selProv);if(!p)return null;return(<div style={{animation:"fi .2s"}}>
               <div style={{textAlign:"center",marginBottom:16}}><div style={{fontSize:32,marginBottom:4}}>📋</div><div className="mm-ti">Submit Payment Proof</div><p className="mm-su">Enter your <strong style={{color:pv?.color}}>{pv?.name}</strong> transaction details & upload screenshot</p></div>
               <div style={{background:pv?.color+"08",border:`1px solid ${pv?.color}20`,borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10}}><div className="pv-d" style={{background:pv?.color,flexShrink:0}} /><div><div style={{fontWeight:700,fontSize:13,color:pv?.color}}>{pv?.name}</div><div style={{fontSize:11,color:"#555"}}>{subModal.icon} {subModal.name} — {p.icon} {p.name} — {fG(p.price)}</div></div></div>
               <div style={{marginBottom:14}}><label style={{display:"block",fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:5}}>{pv?.refLabel||"REFERENCE"}</label><input className="inp" placeholder={pv?.refPlaceholder||"e.g. REF-123456"} value={refNum} onChange={e=>setRefNum(e.target.value)} /></div>
