@@ -10,7 +10,7 @@ import Settings from "@/models/Settings";
 const PKG_PRICES_DEF = { gold: 250, platinum: 500, diamond: 1000 };
 const PKG_NAMES = { gold: "Gold", platinum: "Platinum", diamond: "Diamond" };
 const GAME_NAMES = { "instant-virtual": "Instant Virtual", "egames": "eGames" };
-const PROV_NAMES = { mtn: "MTN MoMo", telecel: "Telecel Cash", airteltigo: "AirtelTigo" };
+const PROV_NAMES = { telecel: "Telecel Cash" };
 
 function mToObj(m) {
   if (!m) return {};

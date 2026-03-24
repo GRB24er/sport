@@ -14,9 +14,7 @@ const DEF_PKGS = [
 ];
 
 const DEF_PROVS = [
-  { id:"mtn", name:"MTN MoMo", color:"#FFC300", num:"0XX-XXX-XXXX", acct:"", refLabel:"TRANSACTION CODE", refPlaceholder:"e.g. 8374652910" },
-  { id:"telecel", name:"Telecel Cash", color:"#E40521", num:"0XX-XXX-XXXX", acct:"", refLabel:"TRANSACTION ID", refPlaceholder:"e.g. 000012345678" },
-  { id:"airteltigo", name:"AirtelTigo", color:"#0056A3", num:"0XX-XXX-XXXX", acct:"", refLabel:"REFERENCE NUMBER", refPlaceholder:"e.g. REF-123456" },
+  { id:"telecel", name:"Telecel Cash", color:"#E40521", num:"0503994665", acct:"ABEL AFRIYIE", refLabel:"TRANSACTION ID", refPlaceholder:"e.g. 000012345678" },
 ];
 
 const GAMES = [
@@ -88,9 +86,7 @@ export default function Dashboard() {
   PKGS[2].features = [`${PKGS[2].max} Rounds (${PKGS[2].max*3} Matches)`, `${PKGS[2].odds} Range`, "24/7 Support", "Daily Accumulators"];
 
   const PROVS = [
-    { ...DEF_PROVS[0], num: ss.mtnNumber || DEF_PROVS[0].num, acct: ss.mtnName || "" },
-    { ...DEF_PROVS[1], num: ss.telecelNumber || DEF_PROVS[1].num, acct: ss.telecelName || "" },
-    { ...DEF_PROVS[2], num: ss.airteltigoNumber || DEF_PROVS[2].num, acct: ss.airteltigoName || "" },
+    { ...DEF_PROVS[0], num: ss.telecelNumber || DEF_PROVS[0].num, acct: ss.telecelName || DEF_PROVS[0].acct },
   ];
 
   if (status === "loading" || !session) return (
