@@ -20,6 +20,7 @@ const fDate = d => { if(!d) return "—"; try { return new Date(d).toLocaleDateS
 export default function AdminDash() {
   const {data:session,status} = useSession();
   const router = useRouter();
+  const [mounted,setMounted] = useState(false);
   const [tab,setTab] = useState("overview");
   const [sidebar,setSidebar] = useState(false);
   const [users,setUsers] = useState([]);
@@ -57,6 +58,9 @@ export default function AdminDash() {
   const [uploadsWithImages,setUploadsWithImages] = useState(null);
   const [loadingImages,setLoadingImages] = useState(false);
   const [modalScreenshot,setModalScreenshot] = useState(null);
+
+  // Prevent hydration mismatch — render nothing on server
+  useEffect(() => { setMounted(true); }, []);
 
   // Fetch payment screenshot on demand when user modal opens
   useEffect(() => {
@@ -135,7 +139,7 @@ export default function AdminDash() {
     </div>
   );
 
-  if(status==="loading"||!session) return <LoadingSkeleton />;
+  if(!mounted || status==="loading"||!session) return <LoadingSkeleton />;
   if(!dataLoaded && refreshing) return <LoadingSkeleton />;
 
   // ── CALCULATED STATS ──
