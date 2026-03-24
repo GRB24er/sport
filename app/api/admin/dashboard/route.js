@@ -189,6 +189,6 @@ export async function GET() {
     return NextResponse.json(result);
   } catch (error) {
     console.error("Admin dashboard error:", error);
-    return NextResponse.json({ error: "Failed to load dashboard" }, { status: 500 });
+    return NextResponse.json({ error: `Failed to load dashboard: ${error.message}` }, { status: 500 });
   }
 }
