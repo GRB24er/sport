@@ -55,6 +55,7 @@ export default function AdminDash() {
   const [fgSaving,setFgSaving] = useState(false);
   const [refreshing,setRefreshing] = useState(false);
   const [dataLoaded,setDataLoaded] = useState(false);
+  const [loadError,setLoadError] = useState(null);
   const [uploadsWithImages,setUploadsWithImages] = useState(null);
   const [loadingImages,setLoadingImages] = useState(false);
   const [modalScreenshot,setModalScreenshot] = useState(null);
@@ -81,10 +82,17 @@ export default function AdminDash() {
   // Single consolidated fetch — 1 serverless cold start instead of 9
   const load = async () => {
     setRefreshing(true);
+    setLoadError(null);
     try {
       const res = await fetch("/api/admin/dashboard");
+      if (!res.ok) {
+        const text = await res.text();
+        setLoadError(`API returned ${res.status}: ${text.slice(0, 200)}`);
+        setRefreshing(false);
+        return;
+      }
       const d = await res.json();
-      if (d.error) { console.error("Dashboard load error:", d.error); setRefreshing(false); return; }
+      if (d.error) { setLoadError(`Dashboard error: ${d.error}`); setRefreshing(false); return; }
       setUsers(d.users||[]);
       setPreds(d.rounds||[]);
       setUploads(d.uploads||[]);
@@ -99,7 +107,7 @@ export default function AdminDash() {
       setUploadsWithImages(null); // Clear image cache so it refetches when tab is opened
       // Load free games
       try { const fgRes = await fetch("/api/free-games"); const fgD = await fgRes.json(); setFreeGames(fgD.freeGames||[]); } catch(e) {}
-    } catch(e) { console.error("Load error",e); }
+    } catch(e) { setLoadError(`Network error: ${e.message}`); console.error("Load error",e); }
     setRefreshing(false);
   };
 
@@ -141,6 +149,15 @@ export default function AdminDash() {
 
   if(!mounted || status==="loading"||!session) return <LoadingSkeleton />;
   if(!dataLoaded && refreshing) return <LoadingSkeleton />;
+  if(loadError) return (
+    <div style={{minHeight:"100vh",background:"#0B0D10",padding:24,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{background:"#1A1020",border:"1px solid #E31725",borderRadius:12,padding:32,maxWidth:600,width:"100%"}}>
+        <h2 style={{color:"#E31725",margin:"0 0 12px",fontSize:18}}>Dashboard Load Error</h2>
+        <p style={{color:"#ccc",fontSize:14,margin:"0 0 16px",wordBreak:"break-word"}}>{loadError}</p>
+        <button onClick={load} style={{padding:"10px 24px",borderRadius:8,background:"#E31725",color:"#fff",border:"none",cursor:"pointer",fontSize:14,fontWeight:600}}>Retry</button>
+      </div>
+    </div>
+  );
 
   // ── CALCULATED STATS ──
   const pending = users.filter(u=>u.status==="pending");
