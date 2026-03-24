@@ -62,9 +62,10 @@ export async function GET() {
       pkgUsers,
     ] = await Promise.all([
       // 1. Users — only fields the dashboard needs (skip password, avatar, etc.)
+      // No limit — revenue and user list need ALL users
       User.find({})
         .select("name phone email status amountPaidGHS referredBy referralCode gamePackages pendingGamePackages sportyBetId referenceNumber paymentProvider createdAt approvedAt isBanned banReason bannedAt bannedUntil bannedIP lastLoginIP paymentScreenshot")
-        .sort({ createdAt: -1 }).limit(200).lean(),
+        .sort({ createdAt: -1 }).lean(),
       // 2. Uploads — EXCLUDE imageData (base64 screenshots are 500KB-2MB each!)
       Upload.find({})
         .select("-imageData")
@@ -145,7 +146,7 @@ export async function GET() {
             packagePrice: pkgPrices[r.package] || 0,
             referenceNumber: r.referenceNumber, paymentProvider: r.paymentProvider,
             providerName: PROV_NAMES[r.paymentProvider] || r.paymentProvider,
-            senderName: r.senderName || "", date: r.date,
+            senderName: r.senderName || "", paymentScreenshot: r.paymentScreenshot || null, date: r.date,
           });
         }
       }
