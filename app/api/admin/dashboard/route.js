@@ -34,7 +34,7 @@ const CACHE_TTL = 30 * 1000;
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "admin") {
+    if (!session?.user || session.user.role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -47,20 +47,8 @@ export async function GET() {
     await connectDB();
 
     // Run ALL queries in parallel — single DB connection
-    // KEY FIX: Uploads use .select("-imageData") to skip huge base64 strings (~1-2MB each!)
-    // Without this, 100 uploads = 100-200MB of data transferred for nothing
-    const [
-      users,
-      uploads,
-      rounds,
-      notifications,
-      usersWithCodes,
-      allReferred,
-      settings,
-      broadcasts,
-      supportThreads,
-      pkgUsers,
-    ] = await Promise.all([
+    // Uses Promise.allSettled so one failing query doesn't crash the whole dashboard
+    const results = await Promise.allSettled([
       // 1. Users — only fields the dashboard needs (skip password, avatar, etc.)
       // No limit — revenue and user list need ALL users
       User.find({})
@@ -94,6 +82,19 @@ export async function GET() {
       User.find({ "pendingGamePackages": { $exists: true, $ne: {} } })
         .select("name phone email sportyBetId pendingGamePackages").lean(),
     ]);
+
+    // Extract values safely — failed queries return empty arrays/null instead of crashing
+    const v = (i) => results[i].status === "fulfilled" ? results[i].value : null;
+    const users = v(0) || [];
+    const uploads = v(1) || [];
+    const rounds = v(2) || [];
+    const notifications = v(3) || [];
+    const usersWithCodes = v(4) || [];
+    const allReferred = v(5) || [];
+    const settings = v(6);
+    const broadcasts = v(7) || [];
+    const supportThreads = v(8) || [];
+    const pkgUsers = v(9) || [];
 
     // --- Process referral stats ---
     const totalBonusPaid = usersWithCodes.reduce((s, u) => s + (u.referralTotalEarned || 0), 0);
