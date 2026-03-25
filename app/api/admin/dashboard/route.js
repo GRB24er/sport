@@ -10,6 +10,7 @@ import Round from "@/models/Round";
 import Notification from "@/models/Notification";
 import Settings from "@/models/Settings";
 import Broadcast from "@/models/Broadcast";
+import FreeGame from "@/models/FreeGame";
 import { SupportThread } from "@/models/Support";
 import ReferralEarning from "@/models/ReferralEarning";
 
@@ -26,13 +27,10 @@ function mToObj(m) {
 }
 
 // ── 30-second in-memory cache ──
-// Prevents hammering DB on rapid refreshes or multiple admin tabs
 let dashCache = null;
 let dashCacheTime = 0;
 const CACHE_TTL = 30 * 1000;
 
-// Single consolidated endpoint — replaces 9 separate API calls
-// One cold start, one DB connection, one session check, all queries in parallel
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -40,7 +38,6 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Return cached response if fresh (within 30s)
     const now = Date.now();
     if (dashCache && (now - dashCacheTime) < CACHE_TTL) {
       return NextResponse.json(dashCache);
@@ -48,64 +45,65 @@ export async function GET() {
 
     await connectDB();
 
-    // Run ALL queries in parallel — single DB connection
-    // Uses Promise.allSettled so one failing query doesn't crash the whole dashboard
+    // 7 queries instead of 11 — referral/package data derived from users query
     const results = await Promise.allSettled([
-      // 1. Users — only fields the dashboard needs (skip password, avatar, etc.)
-      // No limit — revenue and user list need ALL users
+      // 0. Users — exclude password, avatar, paymentScreenshot (heavy base64)
       User.find({})
-        .select("name phone email status amountPaidGHS referredBy referralCode gamePackages pendingGamePackages sportyBetId referenceNumber paymentProvider createdAt approvedAt isBanned banReason bannedAt bannedUntil bannedIP lastLoginIP")
+        .select("-password -avatar -paymentScreenshot")
         .sort({ createdAt: -1 }).lean(),
-      // 2. Uploads — EXCLUDE imageData (base64 screenshots are 500KB-2MB each!)
+      // 1. Uploads — exclude imageData (500KB-2MB each)
       Upload.find({})
         .select("-imageData")
         .sort({ createdAt: -1 }).limit(100).lean(),
-      // 3. Rounds (latest 50)
+      // 2. Rounds (latest 50)
       Round.find({}).sort({ createdAt: -1 }).limit(50).lean(),
-      // 4. Notifications (admin, latest 50)
+      // 3. Notifications (admin, latest 50)
       Notification.find({ forAdmin: true })
         .populate("relatedUserId", "name phone")
         .sort({ createdAt: -1 }).limit(50).lean(),
-      // 5. Referral — users with codes
-      User.find({ referralCode: { $ne: null } })
-        .select("name phone referralCode referralBalance referralTotalEarned referralCount status")
-        .sort({ referralCount: -1 }).lean(),
-      // 6. Referral — referred users
-      User.find({ referredBy: { $ne: null } })
-        .select("name phone referredBy status createdAt")
-        .sort({ createdAt: -1 }).lean(),
-      // 7. Settings
+      // 4. Settings
       Settings.findOne({ key: "main" }).lean(),
-      // 8. Broadcasts (latest 20 is enough for the list)
+      // 5. Broadcasts (latest 20)
       Broadcast.find().sort({ createdAt: -1 }).limit(20).lean(),
-      // 9. Support threads
+      // 6. Support threads
       SupportThread.find().sort({ lastDate: -1 }).lean(),
-      // 10. Package requests — users with pending packages
-      User.find({ "pendingGamePackages": { $exists: true, $ne: {} } })
-        .select("name phone email sportyBetId pendingGamePackages").lean(),
-      // 11. Referral earnings log
+      // 7. Referral earnings
       ReferralEarning.find({})
         .populate("referrerId", "name phone referralCode")
         .populate("referredUserId", "name phone")
         .sort({ createdAt: -1 }).limit(200).lean(),
+      // 8. Free games
+      FreeGame.find({}).sort({ createdAt: -1 }).lean(),
     ]);
 
-    // Extract values safely — failed queries return empty arrays/null instead of crashing
     const v = (i) => results[i].status === "fulfilled" ? results[i].value : null;
 
     const users = v(0) || [];
     const uploads = v(1) || [];
     const rounds = v(2) || [];
     const notifications = v(3) || [];
-    const usersWithCodes = v(4) || [];
-    const allReferred = v(5) || [];
-    const settings = v(6);
-    const broadcasts = v(7) || [];
-    const supportThreads = v(8) || [];
-    const pkgUsers = v(9) || [];
-    const allEarnings = v(10) || [];
+    const settings = v(4);
+    const broadcasts = v(5) || [];
+    const supportThreads = v(6) || [];
+    const allEarnings = v(7) || [];
+    const freeGames = v(8) || [];
 
-    // --- Process referral stats ---
+    // --- Derive referral & package data from users (no extra queries) ---
+    const usersWithCodes = [];
+    const allReferred = [];
+    const pkgUsers = [];
+    const userMap = {};
+
+    for (const u of users) {
+      const uid = u._id.toString();
+      userMap[uid] = u;
+      if (u.referralCode) usersWithCodes.push(u);
+      if (u.referredBy) allReferred.push(u);
+      const pending = mToObj(u.pendingGamePackages);
+      if (Object.keys(pending).length > 0) pkgUsers.push(u);
+    }
+
+    // --- Referral stats ---
     const totalBonusPaid = usersWithCodes.reduce((s, u) => s + (u.referralTotalEarned || 0), 0);
     const totalOutstanding = usersWithCodes.reduce((s, u) => s + (u.referralBalance || 0), 0);
     const totalReferrals = allReferred.length;
@@ -125,10 +123,7 @@ export async function GET() {
       },
     };
 
-    // --- Process support threads (enrich with user info already in memory) ---
-    const userMap = {};
-    users.forEach(u => { userMap[u._id.toString()] = u; });
-
+    // --- Support threads (enrich from userMap) ---
     const enrichedThreads = supportThreads.map(t => {
       const u = userMap[t.userId?.toString()];
       return {
@@ -139,7 +134,7 @@ export async function GET() {
     });
     const totalUnread = enrichedThreads.reduce((s, t) => s + (t.unread || 0), 0);
 
-    // --- Process package requests ---
+    // --- Package requests (from pkgUsers derived above) ---
     const pkgPrices = settings
       ? { gold: settings.goldPrice || 250, platinum: settings.platinumPrice || 500, diamond: settings.diamondPrice || 1000 }
       : PKG_PRICES_DEF;
@@ -164,10 +159,8 @@ export async function GET() {
     }
     requests.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    // --- Notification unread count ---
     const unreadCount = notifications.filter(n => !n.read).length;
 
-    // --- Settings fallback ---
     let settingsObj = settings;
     if (!settingsObj) {
       try {
@@ -189,9 +182,9 @@ export async function GET() {
       broadcasts,
       support: { threads: enrichedThreads, totalUnread },
       packageRequests: requests,
+      freeGames,
     };
 
-    // Cache result for 30 seconds
     dashCache = result;
     dashCacheTime = Date.now();
 

@@ -5,8 +5,7 @@ const nextConfig = {
       { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
-  experimental: {
-    serverActions: true,
-  },
+  // Compress API responses
+  compress: true,
 };
 module.exports = nextConfig;

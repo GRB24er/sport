@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -103,10 +103,9 @@ export default function AdminDash() {
       setSupportThreads(d.support?.threads||[]);
       setSupportUnread(d.support?.totalUnread||0);
       setPkgRequests(d.packageRequests||[]);
+      setFreeGames(d.freeGames||[]);
       setDataLoaded(true);
       setUploadsWithImages(null); // Clear image cache so it refetches when tab is opened
-      // Load free games
-      try { const fgRes = await fetch("/api/free-games"); const fgD = await fgRes.json(); setFreeGames(fgD.freeGames||[]); } catch(e) {}
     } catch(e) { setLoadError(`Network error: ${e.message}`); console.error("Load error",e); }
     setRefreshing(false);
   };
@@ -159,86 +158,69 @@ export default function AdminDash() {
     </div>
   );
 
-  // ── CALCULATED STATS ──
-  const pending = users.filter(u=>u.status==="pending");
-  const approved = users.filter(u=>u.status==="approved");
-
-  // Dynamic prices from settings
+  // ── CALCULATED STATS (memoized to avoid recalculation on every render) ──
   const ss = settings || {};
   const FEE = ss.signupFeeGHS || DEF_FEE;
-  const PKGS = [
+  const PKGS = useMemo(() => [
     { ...DEF_PKGS[0], price: ss.goldPrice || DEF_PKGS[0].price, max: ss.goldMaxPreds || DEF_PKGS[0].max },
     { ...DEF_PKGS[1], price: ss.platinumPrice || DEF_PKGS[1].price, max: ss.platinumMaxPreds || DEF_PKGS[1].max },
     { ...DEF_PKGS[2], price: ss.diamondPrice || DEF_PKGS[2].price, max: ss.diamondMaxPreds || DEF_PKGS[2].max },
-  ];
+  ], [ss.goldPrice, ss.platinumPrice, ss.diamondPrice, ss.goldMaxPreds, ss.platinumMaxPreds, ss.diamondMaxPreds]);
   const getPkg = id => { if(!id) return NOPKG; return PKGS.find(p => p.id === id) || NOPKG; };
-  const rejected = users.filter(u=>u.status==="rejected");
-  const unread = notifs.filter(n=>!n.read).length;
-  const filteredByStatus = filter==="all"?users:filter==="banned"?users.filter(u=>u.isBanned):users.filter(u=>u.status===filter);
-  const filtered = userSearch.trim() ? filteredByStatus.filter(u => {
-    const q = userSearch.toLowerCase();
-    return (u.name||"").toLowerCase().includes(q) || (u.phone||"").includes(q) || (u.email||"").toLowerCase().includes(q) || (u.referralCode||"").toLowerCase().includes(q);
-  }) : filteredByStatus;
 
-  // Revenue calculations
-  const calcRevenue = (userList) => {
-    return userList.reduce((total, u) => total + (u.amountPaidGHS || 0), 0);
-  };
-  const totalRevenue = calcRevenue(approved);
-  const todayUsers = approved.filter(u => {
-    const d = new Date(u.createdAt);
+  const { pending, approved, rejected, totalRevenue, todayUsers, thisWeekUsers, pkgStats, totalReferrals, approvedReferrals, referralBonus, topReferrers, activeUsers, lockedUsers } = useMemo(() => {
+    const pending = users.filter(u=>u.status==="pending");
+    const approved = users.filter(u=>u.status==="approved");
+    const rejected = users.filter(u=>u.status==="rejected");
+    const totalRevenue = approved.reduce((t, u) => t + (u.amountPaidGHS || 0), 0);
     const now = new Date();
-    return d.toDateString() === now.toDateString();
-  });
-  const thisWeekUsers = approved.filter(u => {
-    const d = new Date(u.createdAt);
-    const now = new Date();
+    const todayStr = now.toDateString();
     const weekAgo = new Date(now - 7*24*60*60*1000);
-    return d >= weekAgo;
-  });
+    const todayUsers = approved.filter(u => new Date(u.createdAt).toDateString() === todayStr);
+    const thisWeekUsers = approved.filter(u => new Date(u.createdAt) >= weekAgo);
+    const pkgStats = PKGS.map(p => {
+      const count = approved.filter(u => (u.amountPaidGHS || 0) >= FEE + p.price).length;
+      return { ...p, count, revenue: count * (FEE + p.price) };
+    });
+    const totalReferrals = users.filter(u => u.referredBy).length;
+    const approvedReferrals = approved.filter(u => u.referredBy).length;
+    const referralBonus = approvedReferrals * 50;
+    const referrerMap = {};
+    users.forEach(u => {
+      if(u.referredBy) {
+        if(!referrerMap[u.referredBy]) referrerMap[u.referredBy] = { code: u.referredBy, total: 0, approved: 0 };
+        referrerMap[u.referredBy].total++;
+        if(u.status === "approved") referrerMap[u.referredBy].approved++;
+      }
+    });
+    const topReferrers = Object.values(referrerMap).sort((a,b) => b.approved - a.approved).slice(0,5);
+    topReferrers.forEach(r => {
+      const u = users.find(u => u.referralCode === r.code);
+      r.name = u ? u.name : r.code;
+      r.bonus = r.approved * 50;
+    });
+    const activeUsers = approved.filter(u => (u.predictionsUsed||0) > 0);
+    const lockedUsers = approved.filter(u => {
+      const pkg = PKGS.find(p => p.id === u.package) || NOPKG;
+      return (u.predictionsUsed||0) >= pkg.max;
+    });
+    return { pending, approved, rejected, totalRevenue, todayUsers, thisWeekUsers, pkgStats, totalReferrals, approvedReferrals, referralBonus, topReferrers, activeUsers, lockedUsers };
+  }, [users, PKGS, FEE]);
 
-  // Package stats
-  const pkgStats = PKGS.map(p => {
-    // Count users whose amountPaidGHS includes this package price
-    // Registration = 50, Gold = 250, Platinum = 500, Diamond = 1000
-    const count = approved.filter(u => (u.amountPaidGHS || 0) >= FEE + p.price).length;
-    const revenue = count * (FEE + p.price);
-    return { ...p, count, revenue };
-  });
+  const unread = useMemo(() => notifs.filter(n=>!n.read).length, [notifs]);
 
-  // Prediction stats
-  const pendUploads = uploads.filter(u => u.status === "pending");
-  const doneUploads = uploads.filter(u => u.status === "responded");
-  const todayUploads = uploads.filter(u => new Date(u.createdAt).toDateString() === new Date().toDateString());
+  const filtered = useMemo(() => {
+    const byStatus = filter==="all"?users:filter==="banned"?users.filter(u=>u.isBanned):users.filter(u=>u.status===filter);
+    if (!userSearch.trim()) return byStatus;
+    const q = userSearch.toLowerCase();
+    return byStatus.filter(u => (u.name||"").toLowerCase().includes(q) || (u.phone||"").includes(q) || (u.email||"").toLowerCase().includes(q) || (u.referralCode||"").toLowerCase().includes(q));
+  }, [users, filter, userSearch]);
 
-  // Referral stats
-  const totalReferrals = users.filter(u => u.referredBy).length;
-  const approvedReferrals = approved.filter(u => u.referredBy).length;
-  const referralBonus = approvedReferrals * 50;
-
-  // Top referrers
-  const referrerMap = {};
-  users.forEach(u => {
-    if(u.referredBy) {
-      if(!referrerMap[u.referredBy]) referrerMap[u.referredBy] = { code: u.referredBy, total: 0, approved: 0 };
-      referrerMap[u.referredBy].total++;
-      if(u.status === "approved") referrerMap[u.referredBy].approved++;
-    }
-  });
-  const topReferrers = Object.values(referrerMap).sort((a,b) => b.approved - a.approved).slice(0,5);
-  // Match referral codes to user names
-  topReferrers.forEach(r => {
-    const u = users.find(u => u.referralCode === r.code);
-    r.name = u ? u.name : r.code;
-    r.bonus = r.approved * 50;
-  });
-
-  // Active users (have used predictions)
-  const activeUsers = approved.filter(u => (u.predictionsUsed||0) > 0);
-  const lockedUsers = approved.filter(u => {
-    const pkg = getPkg(u.package);
-    return (u.predictionsUsed||0) >= pkg.max;
-  });
+  const { pendUploads, doneUploads, todayUploads } = useMemo(() => ({
+    pendUploads: uploads.filter(u => u.status === "pending"),
+    doneUploads: uploads.filter(u => u.status === "responded"),
+    todayUploads: uploads.filter(u => new Date(u.createdAt).toDateString() === new Date().toDateString()),
+  }), [uploads]);
 
   const approve = async id => { await fetch("/api/users/approve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:id})}); load(); };
   const reject = async id => { await fetch("/api/users/reject",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:id})}); load(); };

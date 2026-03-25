@@ -31,4 +31,7 @@ const uploadSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Composite index for admin listing (filter by status, sort by date)
+uploadSchema.index({ status: 1, createdAt: -1 });
+
 export default mongoose.models.Upload || mongoose.model("Upload", uploadSchema);
