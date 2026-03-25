@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const LOGO_H = 90;
@@ -10,7 +10,7 @@ const DEF_PROVS = [
   { id:"telecel", name:"Telecel Cash", short:"Telecel", number:"0503994665", acct:"ABEL AFRIYIE", color:"#E40521", dark:"#8B0315", bg:"linear-gradient(135deg,#E40521,#FF1744)", icon:"💳", dial:"*110#", steps:["Dial *110# on your Telecel line","Select Transfer/Send Money","Enter the number shown above","Enter the exact amount","Add reference as note","Confirm and enter PIN"] },
 ];
 
-export default function SignupPage() {
+function SignupInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep] = useState(1);
@@ -362,4 +362,8 @@ export default function SignupPage() {
       <div className="su-pgfoot"><img src="/images/logo.png" alt="VB" style={{height:28,width:"auto",objectFit:"contain",opacity:.3,marginBottom:6,display:"block",margin:"0 auto 6px"}} /><div>© 2026 VirtualBet. 18+ Only. Gamble Responsibly.</div></div>
     </div>
   );
+}
+
+export default function SignupPage() {
+  return <Suspense><SignupInner /></Suspense>;
 }
