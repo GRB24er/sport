@@ -36,24 +36,17 @@ export default function PredictPage() {
   const isFirstLoad=useRef(true);
   const loadAll=async()=>{
     if(!session?.user?.id||session.user.id==="admin") return;
-    // Only show loading spinner on first load, not polling refreshes
     if(isFirstLoad.current) setLoading(true);
     try{
-      const [uR,sR]=await Promise.all([
-        fetch(`/api/users/${session.user.id}`),
-        fetch("/api/admin/settings"),
-      ]);
-      if(uR.ok){const d=await uR.json();setUserData(d.user);}
-      else if(isFirstLoad.current){setError("Failed to load your data. Please refresh.");}
-
-      if(sR.ok){const d=await sR.json();if(d.settings)setSiteSettings(d.settings);}
-
-      if(isIV){
-        const upR=await fetch("/api/uploads");
-        if(upR.ok){const d=await upR.json();setUploads(d.uploads||[]);}
-      } else {
-        const rR=await fetch(`/api/rounds?gameId=${gameId}`);
-        if(rR.ok){const d=await rR.json();setRounds(d.rounds||[]);}
+      const res=await fetch(`/api/predict?gameId=${gameId}`);
+      if(res.ok){
+        const d=await res.json();
+        if(d.user) setUserData(d.user);
+        if(d.settings) setSiteSettings(d.settings);
+        if(isIV) setUploads(d.uploads||[]);
+        else setRounds(d.rounds||[]);
+      } else if(isFirstLoad.current){
+        setError("Failed to load your data. Please refresh.");
       }
     }catch(e){
       if(isFirstLoad.current) setError("Network error. Check your connection.");
@@ -63,8 +56,8 @@ export default function PredictPage() {
   };
 
   useEffect(()=>{isFirstLoad.current=true;loadAll();},[session,gameId]);
-  // Poll every 45s instead of 20s to reduce DB load
-  useEffect(()=>{if(!session?.user?.id)return;const i=setInterval(loadAll,45000);return()=>clearInterval(i);},[session,gameId]);
+  // Poll every 90s — single API call instead of 4
+  useEffect(()=>{if(!session?.user?.id)return;const i=setInterval(loadAll,90000);return()=>clearInterval(i);},[session,gameId]);
 
   // Instant Virtual — upload screenshot
   const handleFile=(e)=>{
