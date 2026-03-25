@@ -30,5 +30,7 @@ const roundSchema = new mongoose.Schema(
 );
 
 roundSchema.index({ gameId: 1, status: 1, createdAt: -1 });
+// Auto-expiration query: find live rounds past their expiry
+roundSchema.index({ status: 1, expiresAt: 1 });
 
 export default mongoose.models.Round || mongoose.model("Round", roundSchema);
