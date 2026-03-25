@@ -146,19 +146,7 @@ export default function AdminDash() {
     </div>
   );
 
-  if(!mounted || status==="loading"||!session) return <LoadingSkeleton />;
-  if(!dataLoaded && refreshing) return <LoadingSkeleton />;
-  if(loadError) return (
-    <div style={{minHeight:"100vh",background:"#0B0D10",padding:24,display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{background:"#1A1020",border:"1px solid #E31725",borderRadius:12,padding:32,maxWidth:600,width:"100%"}}>
-        <h2 style={{color:"#E31725",margin:"0 0 12px",fontSize:18}}>Dashboard Load Error</h2>
-        <p style={{color:"#ccc",fontSize:14,margin:"0 0 16px",wordBreak:"break-word"}}>{loadError}</p>
-        <button onClick={load} style={{padding:"10px 24px",borderRadius:8,background:"#E31725",color:"#fff",border:"none",cursor:"pointer",fontSize:14,fontWeight:600}}>Retry</button>
-      </div>
-    </div>
-  );
-
-  // ── CALCULATED STATS (memoized to avoid recalculation on every render) ──
+  // ── CALCULATED STATS (memoized — hooks must run before any early returns) ──
   const ss = settings || {};
   const FEE = ss.signupFeeGHS || DEF_FEE;
   const PKGS = useMemo(() => [
@@ -221,6 +209,19 @@ export default function AdminDash() {
     doneUploads: uploads.filter(u => u.status === "responded"),
     todayUploads: uploads.filter(u => new Date(u.createdAt).toDateString() === new Date().toDateString()),
   }), [uploads]);
+
+  // ── Early returns AFTER all hooks ──
+  if(!mounted || status==="loading"||!session) return <LoadingSkeleton />;
+  if(!dataLoaded && refreshing) return <LoadingSkeleton />;
+  if(loadError) return (
+    <div style={{minHeight:"100vh",background:"#0B0D10",padding:24,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{background:"#1A1020",border:"1px solid #E31725",borderRadius:12,padding:32,maxWidth:600,width:"100%"}}>
+        <h2 style={{color:"#E31725",margin:"0 0 12px",fontSize:18}}>Dashboard Load Error</h2>
+        <p style={{color:"#ccc",fontSize:14,margin:"0 0 16px",wordBreak:"break-word"}}>{loadError}</p>
+        <button onClick={load} style={{padding:"10px 24px",borderRadius:8,background:"#E31725",color:"#fff",border:"none",cursor:"pointer",fontSize:14,fontWeight:600}}>Retry</button>
+      </div>
+    </div>
+  );
 
   const approve = async id => { await fetch("/api/users/approve",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:id})}); load(); };
   const reject = async id => { await fetch("/api/users/reject",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:id})}); load(); };
