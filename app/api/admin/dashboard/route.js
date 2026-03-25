@@ -92,6 +92,11 @@ export async function GET() {
 
     // Extract values safely — failed queries return empty arrays/null instead of crashing
     const v = (i) => results[i].status === "fulfilled" ? results[i].value : null;
+
+    // Debug: log any failed queries
+    const failedQueries = results.map((r, i) => r.status === "rejected" ? { query: i, reason: r.reason?.message || String(r.reason) } : null).filter(Boolean);
+    if (failedQueries.length > 0) console.error("Dashboard failed queries:", JSON.stringify(failedQueries));
+
     const users = v(0) || [];
     const uploads = v(1) || [];
     const rounds = v(2) || [];
@@ -179,6 +184,7 @@ export async function GET() {
 
     const result = {
       users,
+      _debug: { userCount: users.length, failedQueries },
       uploads,
       rounds,
       notifications,
