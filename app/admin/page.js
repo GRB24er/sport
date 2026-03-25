@@ -422,7 +422,7 @@ export default function AdminDash() {
             <div className="agrid4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
               {[
                 {l:"TODAY",v:todayUsers.length+" new",icon:"📅",s:todayUploads.length+" uploads"},
-                {l:"THIS WEEK",v:thisWeekUsers.length+" users",icon:"📆",s:fB(calcRevenue(thisWeekUsers))},
+                {l:"THIS WEEK",v:thisWeekUsers.length+" users",icon:"📆",s:fB(thisWeekUsers.reduce((t,u)=>t+(u.amountPaidGHS||0),0))},
                 {l:"ACTIVE",v:activeUsers.length,icon:"⚡",c:"#0B9635",s:lockedUsers.length+" locked"},
                 {l:"REFERRALS",v:totalReferrals,icon:"🔗",s:fB(referralBonus)+" owed"},
               ].map((s,i)=>(
