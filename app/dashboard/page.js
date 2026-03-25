@@ -132,9 +132,17 @@ export default function Dashboard() {
     if (!file.type.startsWith("image/")) { setError("Please upload an image file."); return; }
     if (file.size > 10 * 1024 * 1024) { setError("Screenshot must be under 10MB."); return; }
     setError("");
-    const reader = new FileReader();
-    reader.onload = (ev) => { setPayScreenshot(ev.target.result); setPayPreview(ev.target.result); };
-    reader.readAsDataURL(file);
+    setPayPreview(URL.createObjectURL(file));
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) { const r = Math.min(MAX/w, MAX/h); w = Math.round(w*r); h = Math.round(h*r); }
+      const c = document.createElement("canvas"); c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      setPayScreenshot(c.toDataURL("image/jpeg", 0.7));
+    };
+    img.src = URL.createObjectURL(file);
   };
 
   const submitRef = async () => {
