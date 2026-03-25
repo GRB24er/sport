@@ -49,6 +49,7 @@ export default function Dashboard() {
   const [refEarnings, setRefEarnings] = useState([]);
   const [refStats, setRefStats] = useState(null);
   const [refReferrals, setRefReferrals] = useState([]);
+  const [dashLoading, setDashLoading] = useState(true);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -71,6 +72,8 @@ export default function Dashboard() {
     } catch (e) {
       console.error("Dashboard load error:", e);
       setError("Failed to load data. Please refresh the page.");
+    } finally {
+      setDashLoading(false);
     }
   };
 
@@ -92,7 +95,7 @@ export default function Dashboard() {
     { ...DEF_PROVS[0], num: ss.telecelNumber || DEF_PROVS[0].num, acct: ss.telecelName || DEF_PROVS[0].acct },
   ];
 
-  if (status === "loading" || !session) return (
+  if (status === "loading" || !session || dashLoading) return (
     <div style={{minHeight:"100vh",background:"#0B0D10",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{width:44,height:44,border:"3px solid #1E2028",borderTopColor:"#E31725",borderRadius:"50%",animation:"sp .8s linear infinite"}} />
       <style>{`@keyframes sp{to{transform:rotate(360deg)}}`}</style>
