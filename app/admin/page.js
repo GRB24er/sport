@@ -93,13 +93,6 @@ export default function AdminDash() {
       }
       const d = await res.json();
       if (d.error) { setLoadError(`Dashboard error: ${d.error}`); setRefreshing(false); return; }
-      // Debug: show if API returned 0 users
-      if (d._debug) console.log("Dashboard debug:", JSON.stringify(d._debug));
-      if ((d.users||[]).length === 0 && d._debug) {
-        setLoadError(`API returned 0 users. Debug: ${JSON.stringify(d._debug)}`);
-        setRefreshing(false);
-        return;
-      }
       setUsers(d.users||[]);
       setPreds(d.rounds||[]);
       setUploads(d.uploads||[]);
