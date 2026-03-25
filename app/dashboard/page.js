@@ -58,21 +58,20 @@ export default function Dashboard() {
   const loadUser = async () => {
     if (!session?.user?.id || session.user.id === "admin") return;
     try {
-      const [uRes, sRes, nRes] = await Promise.all([
-        fetch(`/api/users/${session.user.id}`),
-        fetch("/api/admin/settings"),
-        fetch("/api/notifications"),
-      ]);
-      if (uRes.ok) { const d = await uRes.json(); setUserData(d.user || null); }
-      else { console.error("Failed to load user data:", uRes.status); }
-      if (sRes.ok) { const d = await sRes.json(); if (d.settings) setSiteSettings(d.settings); }
-      if (nRes.ok) { const d = await nRes.json(); setNotifs(d.notifications || []); }
+      const res = await fetch("/api/dashboard");
+      if (!res.ok) { console.error("Dashboard load failed:", res.status); return; }
+      const d = await res.json();
+      if (d.user) setUserData(d.user);
+      if (d.settings) setSiteSettings(d.settings);
+      setNotifs(d.notifications || []);
+      setFreeGames(d.freeGames || []);
+      setRefEarnings(d.earnings || []);
+      setRefStats(d.refStats || null);
+      setRefReferrals(d.referrals || []);
     } catch (e) {
       console.error("Dashboard load error:", e);
       setError("Failed to load data. Please refresh the page.");
     }
-    try { const fgRes = await fetch("/api/free-games"); if(fgRes.ok){const d=await fgRes.json();setFreeGames(d.freeGames||[]);} } catch(e){}
-    try { const rRes = await fetch("/api/referrals"); if(rRes.ok){const d=await rRes.json();setRefEarnings(d.earnings||[]);setRefStats(d.stats||null);setRefReferrals(d.referrals||[]);} } catch(e){ console.error("Referral load error:", e); }
   };
 
   useEffect(() => { loadUser(); }, [session]);
