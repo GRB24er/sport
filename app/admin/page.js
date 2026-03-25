@@ -829,9 +829,28 @@ export default function AdminDash() {
               (refData.allReferred||[]).map((u,i)=>(
                 <div key={u._id||i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:i<(refData.allReferred||[]).length-1?"1px solid #151820":"none"}}>
                   <div><div style={{fontWeight:700}}>{u.name} <span style={{color:"#444",fontSize:12}}>({u.phone})</span></div><div style={{fontSize:11,color:"#444"}}>Code used: <span style={{color:"#D4AF37",fontFamily:"monospace"}}>{u.referredBy}</span></div></div>
-                  <div style={{textAlign:"right"}}><span style={badge(u.status==="approved"?"#0B963518":"#D4AF3718",u.status==="approved"?"#0B9635":"#D4AF37")}>{u.status}</span>{u.status==="approved"&&<div style={{fontSize:11,color:"#0B9635",fontWeight:700,marginTop:2}}>+{fG(10)} paid</div>}</div>
+                  <div style={{textAlign:"right"}}><span style={badge(u.status==="approved"?"#0B963518":"#D4AF3718",u.status==="approved"?"#0B9635":"#D4AF37")}>{u.status}</span></div>
                 </div>
               ))}
+            </div>
+
+            {/* Earnings log */}
+            <div style={section}>EARNINGS LOG</div>
+            <div style={card}>
+              {(refData.allEarnings||[]).length===0?<div style={{textAlign:"center",padding:28,color:"#444"}}>No earnings recorded yet</div>:
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+                <thead><tr>{["Referrer","Referred User","Type","Paid","Earned","Date"].map(h=><th key={h} style={{textAlign:"left",padding:"8px",color:"#444",fontSize:10,fontWeight:700,letterSpacing:1.5,borderBottom:"1px solid #151820"}}>{h}</th>)}</tr></thead>
+                <tbody>{(refData.allEarnings||[]).map((e,i)=>(
+                  <tr key={e._id||i}>
+                    <td style={{padding:8,fontWeight:600}}>{e.referrerId?.name||"—"}<div style={{fontSize:10,color:"#444"}}>{e.referrerId?.phone||""}</div></td>
+                    <td style={{padding:8}}>{e.referredUserId?.name||"—"}<div style={{fontSize:10,color:"#444"}}>{e.referredUserId?.phone||""}</div></td>
+                    <td style={{padding:8}}><span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:4,background:e.type==="signup"?"#0B963515":"#8B5CF615",color:e.type==="signup"?"#0B9635":"#8B5CF6"}}>{e.type==="signup"?"Signup":`${(e.packageId||"").charAt(0).toUpperCase()+(e.packageId||"").slice(1)} pkg`}</span></td>
+                    <td style={{padding:8,color:"#F0F0F2",fontWeight:600}}>{fG(e.amountPaid)}</td>
+                    <td style={{padding:8,color:"#0B9635",fontWeight:700}}>+{fG(e.amountEarned)}</td>
+                    <td style={{padding:8,fontSize:11,color:"#555"}}>{fDate(e.createdAt)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>}
             </div>
           </div>)}
 

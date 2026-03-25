@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
+import ReferralEarning from "@/models/ReferralEarning";
 
 // Generate unique referral code
 function generateCode() {
@@ -95,9 +96,15 @@ export async function GET(req) {
       const totalReferrals = allReferred.length;
       const approvedReferrals = allReferred.filter(u => u.status === "approved").length;
 
+      const allEarnings = await ReferralEarning.find({})
+        .populate("referrerId", "name phone referralCode")
+        .populate("referredUserId", "name phone")
+        .sort({ createdAt: -1 }).limit(200).lean();
+
       return NextResponse.json({
         usersWithCodes,
         allReferred,
+        allEarnings,
         stats: {
           totalReferrals,
           approvedReferrals,
@@ -117,13 +124,20 @@ export async function GET(req) {
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     let referrals = [];
+    let earnings = [];
     let stats = { total: 0, approved: 0, pending: 0, bonusGHS: 0, bonusUSD: 0 };
 
     if (user.referralCode) {
-      referrals = await User.find({ referredBy: user.referralCode })
-        .select("name phone status package createdAt")
-        .sort({ createdAt: -1 })
-        .lean();
+      const [refs, earns] = await Promise.all([
+        User.find({ referredBy: user.referralCode })
+          .select("name phone status package createdAt")
+          .sort({ createdAt: -1 }).lean(),
+        ReferralEarning.find({ referrerId: user._id })
+          .populate("referredUserId", "name phone")
+          .sort({ createdAt: -1 }).lean(),
+      ]);
+      referrals = refs;
+      earnings = earns;
 
       const approved = referrals.filter(r => r.status === "approved").length;
       const pending = referrals.filter(r => r.status === "pending").length;
@@ -142,6 +156,7 @@ export async function GET(req) {
     return NextResponse.json({
       referralCode: user.referralCode,
       referrals,
+      earnings,
       stats,
     });
   } catch (error) {
