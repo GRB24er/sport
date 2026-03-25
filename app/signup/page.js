@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const LOGO_H = 90;
 const R = 0.077;
@@ -12,13 +12,14 @@ const DEF_PROVS = [
 
 export default function SignupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(1);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
   const [ss, setSs] = useState(null);
   const [showPw, setShowPw] = useState(false);
   const [provider, setProvider] = useState(null);
-  const [form, setForm] = useState({ name:"", email:"", phone:"", password:"", confirm:"", referral:"" });
+  const [form, setForm] = useState({ name:"", email:"", phone:"", password:"", confirm:"", referral: "" });
   const [refNum, setRefNum] = useState("");
   const [senderName, setSenderName] = useState("");
   const [payScreenshot, setPayScreenshot] = useState(null);
@@ -29,6 +30,12 @@ export default function SignupPage() {
   const timerRef = useRef(null);
 
   useEffect(() => { fetch("/api/admin/settings").then(r=>r.json()).then(d=>{if(d.settings)setSs(d.settings)}).catch(()=>{}); }, []);
+
+  // Auto-fill referral code from ?ref= URL param
+  useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (ref) setForm(f => ({ ...f, referral: ref }));
+  }, [searchParams]);
 
   const s = ss || {};
   const FEE = s.signupFeeGHS || DEF_FEE;

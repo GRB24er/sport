@@ -6,6 +6,7 @@ import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
 import Settings from "@/models/Settings";
+import ReferralEarning from "@/models/ReferralEarning";
 
 const PKG_PRICES_DEF = { gold: 250, platinum: 500, diamond: 1000 };
 const PKG_NAMES = { gold: "Gold", platinum: "Platinum", diamond: "Diamond" };
@@ -150,6 +151,24 @@ export async function PATCH(req) {
         $unset: { [`pendingGamePackages.${gameId}`]: "" },
         $inc: { amountPaidGHS: pkgPrice },
       });
+
+      // Credit referrer if this user was referred
+      if (user.referredBy) {
+        const referrer = await User.findOne({ referralCode: user.referredBy, status: "approved" });
+        if (referrer) {
+          let REFERRAL_BONUS = 50;
+          try { const s = await Settings.findOne({ key: "main" }).lean(); if (s?.referralBonusGHS) REFERRAL_BONUS = s.referralBonusGHS; } catch (e) {}
+          referrer.referralBalance = (referrer.referralBalance || 0) + REFERRAL_BONUS;
+          referrer.referralTotalEarned = (referrer.referralTotalEarned || 0) + REFERRAL_BONUS;
+          await referrer.save();
+          await ReferralEarning.create({
+            referrerId: referrer._id, referredUserId: user._id,
+            type: "package", gameId, packageId: req2.package,
+            amountPaid: pkgPrice, amountEarned: REFERRAL_BONUS,
+          });
+          await Notification.create({ type: "referral", message: `🎉 You earned GH₵${REFERRAL_BONUS}! ${user.name} bought ${pkgName} for ${gameName} (GH₵${pkgPrice}).`, forUserId: referrer._id });
+        }
+      }
 
       await Notification.create({ type: "system", message: `🎉 Your ${pkgName} for ${gameName} is activated! Go play!`, forUserId: user._id });
       await Notification.create({ type: "system", message: `✅ ${pkgName} for ${gameName} activated for ${user.name}. Revenue: GH₵${pkgPrice}`, forAdmin: true });

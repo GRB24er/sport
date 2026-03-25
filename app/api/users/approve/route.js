@@ -6,6 +6,7 @@ import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
 import Settings from "@/models/Settings";
+import ReferralEarning from "@/models/ReferralEarning";
 
 const REFERRAL_BONUS_DEF = 50;
 
@@ -28,6 +29,9 @@ export async function POST(req) {
     let REFERRAL_BONUS = REFERRAL_BONUS_DEF;
     try { const s = await Settings.findOne({ key: "main" }).lean(); if (s?.referralBonusGHS) REFERRAL_BONUS = s.referralBonusGHS; } catch (e) {}
 
+    let SIGNUP_FEE = 50;
+    try { const s2 = await Settings.findOne({ key: "main" }).lean(); if (s2?.signupFeeGHS) SIGNUP_FEE = s2.signupFeeGHS; } catch (e) {}
+
     if (user.referredBy) {
       const referrer = await User.findOne({ referralCode: user.referredBy, status: "approved" });
       if (referrer) {
@@ -35,6 +39,10 @@ export async function POST(req) {
         referrer.referralTotalEarned = (referrer.referralTotalEarned || 0) + REFERRAL_BONUS;
         referrer.referralCount = (referrer.referralCount || 0) + 1;
         await referrer.save();
+        await ReferralEarning.create({
+          referrerId: referrer._id, referredUserId: user._id,
+          type: "signup", amountPaid: SIGNUP_FEE, amountEarned: REFERRAL_BONUS,
+        });
         await Notification.create({ type: "referral", message: `🎉 You earned GH₵${REFERRAL_BONUS} referral bonus! ${user.name} just got approved.`, forUserId: referrer._id });
       }
     }

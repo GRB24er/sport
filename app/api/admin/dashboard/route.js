@@ -11,6 +11,7 @@ import Notification from "@/models/Notification";
 import Settings from "@/models/Settings";
 import Broadcast from "@/models/Broadcast";
 import { SupportThread } from "@/models/Support";
+import ReferralEarning from "@/models/ReferralEarning";
 
 const PKG_PRICES_DEF = { gold: 250, platinum: 500, diamond: 1000 };
 const PKG_NAMES = { gold: "Gold", platinum: "Platinum", diamond: "Diamond" };
@@ -82,6 +83,11 @@ export async function GET() {
       // 10. Package requests — users with pending packages
       User.find({ "pendingGamePackages": { $exists: true, $ne: {} } })
         .select("name phone email sportyBetId pendingGamePackages").lean(),
+      // 11. Referral earnings log
+      ReferralEarning.find({})
+        .populate("referrerId", "name phone referralCode")
+        .populate("referredUserId", "name phone")
+        .sort({ createdAt: -1 }).limit(200).lean(),
     ]);
 
     // Extract values safely — failed queries return empty arrays/null instead of crashing
@@ -96,6 +102,7 @@ export async function GET() {
     const broadcasts = v(7) || [];
     const supportThreads = v(8) || [];
     const pkgUsers = v(9) || [];
+    const allEarnings = v(10) || [];
 
     // --- Process referral stats ---
     const totalBonusPaid = usersWithCodes.reduce((s, u) => s + (u.referralTotalEarned || 0), 0);
@@ -106,6 +113,7 @@ export async function GET() {
     const referralData = {
       usersWithCodes,
       allReferred,
+      allEarnings,
       stats: {
         totalReferrals,
         approvedReferrals,

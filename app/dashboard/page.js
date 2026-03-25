@@ -46,6 +46,9 @@ export default function Dashboard() {
   const [freeGames, setFreeGames] = useState([]);
   const [fgLoading, setFgLoading] = useState(false);
   const [fgOpen, setFgOpen] = useState(false);
+  const [refEarnings, setRefEarnings] = useState([]);
+  const [refStats, setRefStats] = useState(null);
+  const [refReferrals, setRefReferrals] = useState([]);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -69,6 +72,7 @@ export default function Dashboard() {
       setError("Failed to load data. Please refresh the page.");
     }
     try { const fgRes = await fetch("/api/free-games"); if(fgRes.ok){const d=await fgRes.json();setFreeGames(d.freeGames||[]);} } catch(e){}
+    try { const rRes = await fetch("/api/referrals"); if(rRes.ok){const d=await rRes.json();setRefEarnings(d.earnings||[]);setRefStats(d.stats||null);setRefReferrals(d.referrals||[]);} } catch(e){}
   };
 
   useEffect(() => { loadUser(); }, [session]);
@@ -301,7 +305,7 @@ export default function Dashboard() {
             })}
 
             <div className="cb">
-              {hasCode ? (<><div style={{fontSize:10,color:"#444",fontWeight:700,letterSpacing:1,marginBottom:3}}>ACCESS CODE</div><div className="cb-v">{refCode}</div><button className="cb-btn" style={{background:"#0B963512",color:"#0B9635"}} onClick={()=>navigator.clipboard?.writeText(refCode)}>📋 Copy Code</button></>) : (<><div className="cb-no">⚠ No valid access code.<br/>{anyPending?"Waiting for package approval.":"Purchase a package to get one."}</div></>)}
+              {hasCode ? (<><div style={{fontSize:10,color:"#444",fontWeight:700,letterSpacing:1,marginBottom:3}}>YOUR REFERRAL LINK</div><div className="cb-v" style={{fontSize:10,wordBreak:"break-all"}}>{`${typeof window!=="undefined"?window.location.origin:""}/signup?ref=${refCode}`}</div><button className="cb-btn" style={{background:"#0B963512",color:"#0B9635"}} onClick={()=>navigator.clipboard?.writeText(`${window.location.origin}/signup?ref=${refCode}`)}>📋 Copy Link</button><div style={{fontSize:9,color:"#555",marginTop:4,textAlign:"center"}}>Code: {refCode}</div></>) : (<><div className="cb-no">⚠ No valid access code.<br/>{anyPending?"Waiting for package approval.":"Purchase a package to get one."}</div></>)}
             </div>
             <button className="pf-out" onClick={()=>signOut({callbackUrl:"/"})}>Logout</button>
           </div>
@@ -391,6 +395,56 @@ export default function Dashboard() {
         {GAMES.filter(g=>!g.live).map((g,i)=>(
           <div key={g.id} className={`gs asu ad${i+3}`}><div className="gs-ic">{g.icon}</div><div className="gs-inf"><div className="gs-nm">{g.name}</div><div className="gs-ds">{g.desc}</div></div><div className="sb">SOON</div></div>
         ))}
+
+        {/* REFERRAL EARNINGS */}
+        {hasCode && (
+          <>
+            <div className="sec asu ad4">🤝 MY REFERRALS</div>
+            <div className="asu ad4" style={{background:"#14161B",border:"1px solid #1E2028",borderRadius:12,padding:16,marginBottom:12}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>
+                <div style={{textAlign:"center",padding:10,background:"#0B0D10",borderRadius:8}}><div style={{fontSize:10,color:"#555",fontWeight:700,letterSpacing:1}}>REFERRED</div><div style={{fontSize:22,fontWeight:800,color:"#F0F0F2",fontFamily:"'Bebas Neue'"}}>{refStats?.total||0}</div></div>
+                <div style={{textAlign:"center",padding:10,background:"#0B0D10",borderRadius:8}}><div style={{fontSize:10,color:"#555",fontWeight:700,letterSpacing:1}}>EARNED</div><div style={{fontSize:22,fontWeight:800,color:"#0B9635",fontFamily:"'Bebas Neue'"}}>{fG(refStats?.bonusGHS||0)}</div></div>
+                <div style={{textAlign:"center",padding:10,background:"#0B0D10",borderRadius:8}}><div style={{fontSize:10,color:"#555",fontWeight:700,letterSpacing:1}}>BALANCE</div><div style={{fontSize:22,fontWeight:800,color:"#D4AF37",fontFamily:"'Bebas Neue'"}}>{fG(refStats?.currentBalance||0)}</div></div>
+              </div>
+
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:"#555",marginBottom:8}}>YOUR REFERRAL LINK</div>
+              <div style={{display:"flex",gap:8,marginBottom:16}}>
+                <div style={{flex:1,padding:"10px 12px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:8,fontSize:11,color:"#0B9635",wordBreak:"break-all",fontFamily:"'Space Mono',monospace"}}>{typeof window!=="undefined"?`${window.location.origin}/signup?ref=${refCode}`:""}</div>
+                <button onClick={()=>navigator.clipboard?.writeText(`${window.location.origin}/signup?ref=${refCode}`)} style={{padding:"10px 14px",background:"#0B963520",border:"1px solid #0B963530",borderRadius:8,color:"#0B9635",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>Copy</button>
+              </div>
+
+              {refEarnings.length>0 && (<>
+                <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:"#555",marginBottom:8}}>EARNINGS HISTORY</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {refEarnings.map((e,i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:8}}>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:600,color:"#F0F0F2"}}>{e.referredUserId?.name||"User"}</div>
+                        <div style={{fontSize:10,color:"#555"}}>{e.type==="signup"?"Signup fee":e.packageId?`${(e.packageId||"").charAt(0).toUpperCase()+(e.packageId||"").slice(1)} package`:"Package"}{e.gameId?` — ${e.gameId==="instant-virtual"?"Instant Virtual":e.gameId==="egames"?"eGames":e.gameId}`:""}</div>
+                      </div>
+                      <div style={{textAlign:"right"}}>
+                        <div style={{fontSize:13,fontWeight:700,color:"#0B9635"}}>+{fG(e.amountEarned)}</div>
+                        <div style={{fontSize:9,color:"#444"}}>{e.amountPaid?`Paid ${fG(e.amountPaid)}`:""}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>)}
+
+              {refReferrals.length>0 && (<>
+                <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:"#555",marginTop:16,marginBottom:8}}>REFERRED USERS</div>
+                <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                  {refReferrals.map((r,i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:"#0B0D10",borderRadius:6}}>
+                      <span style={{fontSize:12,color:"#ccc"}}>{r.name}</span>
+                      <span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:4,background:r.status==="approved"?"#0B963515":"#D4AF3715",color:r.status==="approved"?"#0B9635":"#D4AF37"}}>{r.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </>)}
+            </div>
+          </>
+        )}
       </main>
 
       {/* SUBSCRIBE MODAL */}
