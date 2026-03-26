@@ -267,33 +267,6 @@ export default function AdminDash() {
     return { ...f, matches };
   });
 
-  const downloadUsersCSV = () => {
-    const headers = ["Name","Phone","Email","Status","Package","Revenue (GHS)","Referral Code","Referred By","Joined"];
-    const rows = users.map(u => {
-      const gp = u.gamePackages ? (typeof u.gamePackages === 'object' ? Object.values(u.gamePackages) : []) : [];
-      const pkgName = gp.length > 0 ? (gp[0]?.package || "—") : "—";
-      return [
-        u.name || "",
-        u.phone || "",
-        u.email || "",
-        u.status || "",
-        pkgName,
-        u.amountPaidGHS || 0,
-        u.referralCode || "",
-        u.referredBy || "",
-        u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-GB") : "",
-      ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(",");
-    });
-    const csv = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `users-${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const sendPred = async () => {
     const valid = mf.matches.filter(m => m.home && m.away && m.pick);
     if (valid.length === 0) return;
@@ -605,10 +578,7 @@ export default function AdminDash() {
           {/* ═══ USERS ═══ */}
           {tab==="users"&&(<div className="as">
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
-              <div style={{display:"flex",alignItems:"center",gap:12}}>
-                <h1 style={{...val,fontSize:28}}>All Users ({filtered.length})</h1>
-                <button onClick={downloadUsersCSV} style={{padding:"8px 16px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",border:"1px solid #0B963530",background:"#0B963512",color:"#0B9635",fontFamily:"'DM Sans'",letterSpacing:.5}}>📥 Download CSV</button>
-              </div>
+              <h1 style={{...val,fontSize:28}}>All Users ({filtered.length})</h1>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{["all","approved","pending","rejected","banned"].map(f=>(
                 <button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",border:filter===f?"1px solid #E31725":"1px solid #1E2028",background:filter===f?"#E31725":"transparent",color:filter===f?"#fff":"#555",fontFamily:"'DM Sans'",letterSpacing:.5,textTransform:"uppercase"}}>{f} ({f==="all"?users.length:f==="banned"?users.filter(u=>u.isBanned).length:users.filter(u=>u.status===f).length})</button>
               ))}</div>
