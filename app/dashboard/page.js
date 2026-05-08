@@ -141,7 +141,8 @@ export default function Dashboard() {
 
   const openUpgrade = (e, game) => {
     e.stopPropagation();
-    const currentPkg = getGamePkg(game.id);
+    // Use active package if available, otherwise fall back to pending package
+    const currentPkg = getGamePkg(game.id) || getGamePending(game.id);
     if (!currentPkg) return;
     setUpgradeModal({ game, currentPkg });
     setUpgSelPkg(null); setUpgSelProv(null); setUpgRefNum(""); setUpgSenderName(""); setUpgScreenshot(null); setUpgPreview(null); setUpgStep(1); setUpgSubmitted(false); setUpgError("");
@@ -392,7 +393,10 @@ export default function Dashboard() {
           const activePkg = getGamePkg(g.id);
           const activePkgInfo = activePkg ? PKGS.find(x=>x.id===activePkg.package) : null;
           const PKG_ORDER = ["gold","platinum","diamond"];
-          const canUpgrade = activePkg && PKG_ORDER.indexOf(activePkg.package) < PKG_ORDER.length - 1;
+          // Show upgrade button if user has an active OR pending package that is not Diamond
+          const effectivePkg = activePkg || pending;
+          const effectivePkgId = effectivePkg?.package;
+          const canUpgrade = effectivePkg && PKG_ORDER.indexOf(effectivePkgId) < PKG_ORDER.length - 1;
           return (
             <div key={g.id} className={`gc asu ad${i+1}`} onClick={()=>openSub(g)} style={{cursor:gameIsPending(g.id)?"default":"pointer"}}>
               <div className="gc-b" style={{background:g.bg}}>
