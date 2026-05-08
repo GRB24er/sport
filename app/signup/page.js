@@ -342,9 +342,9 @@ function SignupInner() {
 
             {/* ═══ STEP 4 — SUCCESS ═══ */}
             {step===4&&(<div className="fu" style={{textAlign:"center"}}>
-              <div style={{fontSize:64,marginBottom:16,animation:"fadeUp .5s"}}>⏳</div>
-              <h1 className="su-h">Registration Submitted</h1>
-              <p className="su-sub">Your payment of <strong style={{color:"#0B9635"}}>GH₵{FEE}</strong> is being verified</p>
+              <div style={{fontSize:64,marginBottom:16,animation:"fadeUp .5s"}}>🎉</div>
+              <h1 className="su-h">Account Activated!</h1>
+              <p className="su-sub">Welcome to VirtualBet — your account is <strong style={{color:"#0B9635"}}>live and ready</strong></p>
 
               <div className="su-suc">
                 {[
@@ -352,7 +352,7 @@ function SignupInner() {
                   {l:"SportyBet ID",v:created?.sportyBetId||`SB-${form.phone}`,c:"#0B9635",mono:true},
                   {l:"Payment",v:`GH₵${FEE} via ${pv?.name||"MoMo"}`,c:"#0B9635"},
                   {l:"Reference",v:refNum,mono:true},
-                  {l:"Status",v:"Pending Verification",c:"#D4AF37"},
+                  {l:"Status",v:"✅ Approved & Active",c:"#0B9635"},
                 ].map(r=>(
                   <div key={r.l} className="su-suc-r">
                     <span className="su-suc-l">{r.l}</span>
@@ -361,8 +361,8 @@ function SignupInner() {
                 ))}
               </div>
 
-              <p style={{color:"#444",fontSize:13,marginBottom:24,lineHeight:1.7}}>Your payment is being verified. This usually takes <strong style={{color:"#888"}}>5–30 minutes</strong>. You'll be able to login once approved.</p>
-              <a href="/login"><button className="su-btn su-btn-r">Go to Login →</button></a>
+              <p style={{color:"#444",fontSize:13,marginBottom:24,lineHeight:1.7}}>Your account is <strong style={{color:"#0B9635"}}>instantly activated</strong>. You can log in right now and start playing!</p>
+              <a href="/login"><button className="su-btn su-btn-g">Login Now →</button></a>
             </div>)}
           </div>
         </div>

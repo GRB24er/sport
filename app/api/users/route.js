@@ -6,6 +6,7 @@ import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import Notification from "@/models/Notification";
 import Settings from "@/models/Settings";
+import ReferralEarning from "@/models/ReferralEarning";
 
 const SIGNUP_FEE_DEF = 50;
 
@@ -52,19 +53,48 @@ export async function POST(req) {
       sportyBetId,
       amountPaidGHS: SIGNUP_FEE,
       paymentScreenshot: paymentScreenshot || "",
-      status: "pending",
+      status: "approved",
+      approvedAt: new Date(),
+      approvedBy: "auto",
     });
 
+    // Auto-approve: notify admin of new registration
     await Notification.create({
       type: "payment",
-      message: `${name} (${phone}) submitted registration: ${referenceNumber} — GH₵${SIGNUP_FEE}${senderName ? ` | Sender: ${senderName}` : ""}${referralUsed ? ` | Referred by: ${referralUsed}` : ""}`,
+      message: `✅ AUTO-APPROVED: ${name} (${phone}) registered. Ref: ${referenceNumber} — GH₵${SIGNUP_FEE}${senderName ? ` | Sender: ${senderName}` : ""}${referralUsed ? ` | Referred by: ${referralUsed}` : ""}`,
       forAdmin: true,
       relatedUserId: user._id,
       metadata: { referenceNumber, phone, paymentProvider, senderName, referralUsed },
     });
 
+    // Send welcome notification to user
+    await Notification.create({
+      type: "approval",
+      message: `✅ Welcome to VirtualBet, ${name}! Your account is now active. Start playing!`,
+      forUserId: user._id,
+    });
+
+    // Credit referrer if applicable
+    let REFERRAL_BONUS = 50;
+    try { const s = await Settings.findOne({ key: "main" }).lean(); if (s?.referralBonusGHS) REFERRAL_BONUS = s.referralBonusGHS; } catch (e) {}
+
+    if (referralUsed) {
+      const referrer = await User.findOne({ referralCode: referralUsed, status: "approved" });
+      if (referrer) {
+        referrer.referralBalance = (referrer.referralBalance || 0) + REFERRAL_BONUS;
+        referrer.referralTotalEarned = (referrer.referralTotalEarned || 0) + REFERRAL_BONUS;
+        referrer.referralCount = (referrer.referralCount || 0) + 1;
+        await referrer.save();
+        await ReferralEarning.create({
+          referrerId: referrer._id, referredUserId: user._id,
+          type: "signup", amountPaid: SIGNUP_FEE, amountEarned: REFERRAL_BONUS,
+        });
+        await Notification.create({ type: "referral", message: `🎉 You earned GH₵${REFERRAL_BONUS} referral bonus! ${name} just signed up.`, forUserId: referrer._id });
+      }
+    }
+
     return NextResponse.json({
-      message: "Registration submitted. Awaiting admin verification.",
+      message: "Registration successful! Your account is now active.",
       user: { id: user._id, name: user.name, phone: user.phone, sportyBetId, status: user.status },
     }, { status: 201 });
   } catch (error) {

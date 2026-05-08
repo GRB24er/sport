@@ -47,6 +47,7 @@ export default function AdminDash() {
   const [broadcastForm,setBroadcastForm] = useState({subject:"",body:""});
   const [settingsForm,setSettingsForm] = useState(null);
   const [saving,setSaving] = useState(false);
+  const [resetting,setResetting] = useState(false);
   const [banModal,setBanModal] = useState(null);
   const [banForm,setBanForm] = useState({reason:"",hours:"",banIP:false});
   const [userSearch,setUserSearch] = useState("");
@@ -281,6 +282,19 @@ export default function AdminDash() {
     setSending(false); setModal(false);
     setMf({gameId:"instant-virtual",note:"",expire:60,sportyLink:"",matches:[{home:"",away:"",time:"",mkt:"1X2",pick:"",odd:""},{home:"",away:"",time:"",mkt:"Over/Under 2.5",pick:"",odd:""},{home:"",away:"",time:"",mkt:"BTTS",pick:"",odd:""}]});
     load();
+  };
+
+  const resetAllPackages = async () => {
+    if (!confirm("⚠️ DANGER: This will reset ALL members' game packages to empty. They will need to re-subscribe. This cannot be undone. Are you absolutely sure?")) return;
+    if (!confirm("Last chance — are you 100% sure you want to reset ALL packages?")) return;
+    setResetting(true);
+    try {
+      const res = await fetch("/api/admin/reset-packages", { method: "POST", headers: { "Content-Type": "application/json" } });
+      const data = await res.json();
+      if (res.ok) { alert(`✅ ${data.message}`); load(); }
+      else { alert(`❌ Error: ${data.error}`); }
+    } catch (e) { alert("Network error. Please try again."); }
+    setResetting(false);
   };
 
   const saveSettings = async () => {
@@ -1141,6 +1155,19 @@ export default function AdminDash() {
             </div>
 
             <button onClick={saveSettings} disabled={saving} style={{...btn("#0B9635"),padding:"16px 32px",fontSize:16,width:"100%",opacity:saving?.5:1}}>{saving?"Saving...":"💾 Save All Settings"}</button>
+
+            {/* DANGER ZONE */}
+            <div style={{...card,borderColor:"#E3172530",marginTop:24}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#E31725",marginBottom:4}}>⚠️ DANGER ZONE</div>
+              <p style={{fontSize:12,color:"#555",marginBottom:16,lineHeight:1.6}}>These actions are irreversible. Use with extreme caution.</p>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px",background:"#E3172508",border:"1px solid #E3172520",borderRadius:10}}>
+                <div>
+                  <div style={{fontWeight:700,fontSize:14,color:"#F0F0F2",marginBottom:2}}>🔄 Reset All Members' Packages</div>
+                  <div style={{fontSize:12,color:"#555"}}>Clears all active and pending game packages for every member. They will need to re-subscribe.</div>
+                </div>
+                <button onClick={resetAllPackages} disabled={resetting} style={{...btn("#E31725"),padding:"12px 20px",fontSize:13,marginLeft:16,flexShrink:0,opacity:resetting?.5:1}}>{resetting?"⏳ Resetting...":"🔄 Reset All Packages"}</button>
+              </div>
+            </div>
           </div>)}
         </main>
       </div>

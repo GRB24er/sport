@@ -50,6 +50,17 @@ export default function Dashboard() {
   const [refStats, setRefStats] = useState(null);
   const [refReferrals, setRefReferrals] = useState([]);
   const [dashLoading, setDashLoading] = useState(true);
+  const [upgradeModal, setUpgradeModal] = useState(null); // { game, currentPkg }
+  const [upgSelPkg, setUpgSelPkg] = useState(null);
+  const [upgSelProv, setUpgSelProv] = useState(null);
+  const [upgRefNum, setUpgRefNum] = useState("");
+  const [upgSenderName, setUpgSenderName] = useState("");
+  const [upgScreenshot, setUpgScreenshot] = useState(null);
+  const [upgPreview, setUpgPreview] = useState(null);
+  const [upgStep, setUpgStep] = useState(1);
+  const [upgSubmitting, setUpgSubmitting] = useState(false);
+  const [upgSubmitted, setUpgSubmitted] = useState(false);
+  const [upgError, setUpgError] = useState("");
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -127,6 +138,52 @@ export default function Dashboard() {
   };
 
   const closeSub = () => { setSubModal(null); setSelPkg(null); setSelProv(null); setRefNum(""); setSenderName(""); setPayScreenshot(null); setPayPreview(null); setStep(1); setSubmitted(false); setError(""); };
+
+  const openUpgrade = (e, game) => {
+    e.stopPropagation();
+    const currentPkg = getGamePkg(game.id);
+    if (!currentPkg) return;
+    setUpgradeModal({ game, currentPkg });
+    setUpgSelPkg(null); setUpgSelProv(null); setUpgRefNum(""); setUpgSenderName(""); setUpgScreenshot(null); setUpgPreview(null); setUpgStep(1); setUpgSubmitted(false); setUpgError("");
+  };
+
+  const closeUpgrade = () => { setUpgradeModal(null); setUpgSelPkg(null); setUpgSelProv(null); setUpgRefNum(""); setUpgSenderName(""); setUpgScreenshot(null); setUpgPreview(null); setUpgStep(1); setUpgSubmitted(false); setUpgError(""); };
+
+  const handleUpgScreenshot = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setUpgError("Please upload an image file."); return; }
+    if (file.size > 10 * 1024 * 1024) { setUpgError("Screenshot must be under 10MB."); return; }
+    setUpgError("");
+    setUpgPreview(URL.createObjectURL(file));
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) { const r = Math.min(MAX/w, MAX/h); w = Math.round(w*r); h = Math.round(h*r); }
+      const c = document.createElement("canvas"); c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      setUpgScreenshot(c.toDataURL("image/jpeg", 0.7));
+    };
+    img.src = URL.createObjectURL(file);
+  };
+
+  const submitUpgrade = async () => {
+    if (!upgRefNum.trim()) { setUpgError("Enter your transaction reference."); return; }
+    if (!upgScreenshot) { setUpgError("Upload your payment screenshot for verification."); return; }
+    setUpgError(""); setUpgSubmitting(true);
+    try {
+      const res = await fetch("/api/packages/upgrade", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gameId: upgradeModal.game.id, newPackageId: upgSelPkg, paymentProvider: upgSelProv, referenceNumber: upgRefNum.trim(), senderName: upgSenderName.trim(), paymentScreenshot: upgScreenshot }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setUpgError(data.error || "Failed"); setUpgSubmitting(false); return; }
+      setUpgSubmitted(true);
+      loadUser();
+    } catch (e) { setUpgError("Network error."); }
+    setUpgSubmitting(false);
+  };
 
   const handlePayScreenshot = (e) => {
     const file = e.target.files[0];
@@ -332,6 +389,10 @@ export default function Dashboard() {
           const btn = getGameButton(g);
           const pending = getGamePending(g.id);
           const pendPkg = pending ? PKGS.find(x=>x.id===pending.package) : null;
+          const activePkg = getGamePkg(g.id);
+          const activePkgInfo = activePkg ? PKGS.find(x=>x.id===activePkg.package) : null;
+          const PKG_ORDER = ["gold","platinum","diamond"];
+          const canUpgrade = activePkg && PKG_ORDER.indexOf(activePkg.package) < PKG_ORDER.length - 1 && !gameIsPending(g.id);
           return (
             <div key={g.id} className={`gc asu ad${i+1}`} onClick={()=>openSub(g)} style={{cursor:gameIsPending(g.id)?"default":"pointer"}}>
               <div className="gc-b" style={{background:g.bg}}>
@@ -348,8 +409,14 @@ export default function Dashboard() {
                 <div>
                   <p className="gc-ds">{g.desc}</p>
                   <div className="gc-tg">{g.tags.map(t=><span key={t} className="gc-t" style={{color:g.color,background:g.color+"12"}}>{t}</span>)}</div>
+                  {activePkgInfo && <div style={{marginTop:6,fontSize:10,color:activePkgInfo.color,fontWeight:700}}>{activePkgInfo.icon} {activePkgInfo.name} Active</div>}
                 </div>
-                <div className="gc-bt" style={btn.style}>{btn.text}</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
+                  <div className="gc-bt" style={btn.style}>{btn.text}</div>
+                  {canUpgrade && (
+                    <button onClick={(e)=>openUpgrade(e,g)} style={{padding:"8px 16px",borderRadius:8,background:"#D4AF3715",color:"#D4AF37",border:"1.5px solid #D4AF3730",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans'",whiteSpace:"nowrap",transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.background="#D4AF3730"}} onMouseLeave={e=>{e.currentTarget.style.background="#D4AF3715"}}>⬆ Upgrade</button>
+                  )}
+                </div>
               </div>
               {pending && (
                 <div className="pend"><div className="pend-dot" /><span>⏳ {pendPkg?.icon} {pendPkg?.name} — Payment being verified • Ref: {pending.referenceNumber}</span></div>
@@ -456,6 +523,103 @@ export default function Dashboard() {
           </>
         )}
       </main>
+
+      {/* UPGRADE MODAL */}
+      {upgradeModal && (() => {
+        const { game, currentPkg } = upgradeModal;
+        const PKG_ORDER = ["gold","platinum","diamond"];
+        const currentIdx = PKG_ORDER.indexOf(currentPkg.package);
+        const upgradablePkgs = PKGS.filter(p => PKG_ORDER.indexOf(p.id) > currentIdx);
+        const currentPkgInfo = PKGS.find(x => x.id === currentPkg.package);
+        const selPkgInfo = upgSelPkg ? PKGS.find(x => x.id === upgSelPkg) : null;
+        const selProvInfo = upgSelProv ? PROVS.find(x => x.id === upgSelProv) : null;
+        return (
+          <div className="mo" onClick={closeUpgrade}>
+            <div className="mm" onClick={e=>e.stopPropagation()}>
+              <div className="mm-bar" />
+              <div className="mm-st"><div className={upgStep>=1?"on":""}/><div className={upgStep>=2?"on":""}/><div className={upgStep>=3?"on":""}/></div>
+
+              {!upgSubmitted && upgStep===1 && (
+                <div style={{animation:"fi .2s"}}>
+                  <div style={{textAlign:"center",marginBottom:18}}>
+                    <div style={{fontSize:40,marginBottom:4}}>{game.icon}</div>
+                    <div className="mm-ti">⬆ Upgrade Package</div>
+                    <p className="mm-su">{game.name} — currently on <span style={{color:currentPkgInfo?.color,fontWeight:700}}>{currentPkgInfo?.icon} {currentPkgInfo?.name}</span></p>
+                  </div>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:8}}>SELECT NEW PACKAGE</div>
+                  <div className="pkg">{upgradablePkgs.map(p=>{const s=upgSelPkg===p.id;return(
+                    <div key={p.id} className={`pk ${s?"on":""}`} onClick={()=>setUpgSelPkg(p.id)} style={{borderColor:s?p.color:"#1E2028",background:s?p.color+"10":"#0B0D10"}}>
+                      <div className="pk-i">{p.icon}</div><div className="pk-n" style={{color:p.color}}>{p.name}</div><div className="pk-o">{p.odds}</div><div className="pk-p">{fG(p.price)}</div><div className="pk-u">≈ ${(p.price*R).toFixed(2)}</div><div className="pk-d">{p.max} pred{p.max>1?"s":""}</div>{s&&<div className="pk-c" style={{color:p.color}}>✓</div>}
+                    </div>);})}
+                  </div>
+                  {selPkgInfo&&(<div className="det"><div className="det-l" style={{color:selPkgInfo.color}}>{selPkgInfo.icon} {selPkgInfo.name.toUpperCase()}</div>{selPkgInfo.features.map(f=><div key={f} className="det-f"><span style={{color:"#0B9635"}}>✓</span>{f}</div>)}<div className="det-t"><span style={{color:"#555",fontWeight:600}}>Total</span><span style={{fontFamily:"'Bebas Neue'",fontSize:22,color:"#0B9635",letterSpacing:1}}>{fB(selPkgInfo.price)}</span></div></div>)}
+                  <button className="ab" disabled={!upgSelPkg} onClick={()=>setUpgStep(2)} style={{background:upgSelPkg?"#D4AF37":"#151820",color:upgSelPkg?"#000":"#444"}}>Continue to Payment →</button>
+                  <button className="bb" onClick={closeUpgrade}>✕ Cancel</button>
+                </div>
+              )}
+
+              {!upgSubmitted && upgStep===2 && selPkgInfo && (
+                <div style={{animation:"fi .2s"}}>
+                  <div style={{textAlign:"center",marginBottom:16}}><div style={{fontSize:32,marginBottom:4}}>💳</div><div className="mm-ti">Payment</div><p className="mm-su">Send <strong style={{color:"#0B9635"}}>{fB(selPkgInfo.price)}</strong> for {game.icon} {game.name} upgrade</p></div>
+                  <div style={{background:"#0B0D10",border:"1px solid #151820",borderRadius:10,padding:"10px 14px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><span style={{fontSize:11,color:"#555"}}>{game.icon} {game.name}:</span> <span style={{fontWeight:700,color:currentPkgInfo?.color}}>{currentPkgInfo?.icon} {currentPkgInfo?.name}</span> <span style={{color:"#444",fontSize:11}}>→</span> <span style={{fontWeight:700,color:selPkgInfo.color}}>{selPkgInfo.icon} {selPkgInfo.name}</span></div><span style={{fontFamily:"'Bebas Neue'",fontSize:18,color:"#0B9635"}}>{fG(selPkgInfo.price)}</span></div>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:8}}>SELECT PAYMENT METHOD</div>
+                  <div className="pvg">{PROVS.map(pv=>{const s=upgSelProv===pv.id;return(
+                    <div key={pv.id} className={`pv ${s?"on":""}`} onClick={()=>setUpgSelProv(pv.id)} style={{borderColor:s?pv.color:"#1E2028",background:s?pv.color+"08":"#0B0D10"}}>
+                      <div className="pv-d" style={{background:pv.color}} /><div><div className="pv-n" style={{color:s?pv.color:"#F0F0F2"}}>{pv.name}</div><div className="pv-nu">Number: {pv.num} • {pv.acct||"VirtualBet GH"}</div></div>{s&&<div className="pv-c" style={{color:pv.color}}>✓</div>}
+                    </div>);})}
+                  </div>
+                  {selProvInfo&&(<div style={{background:selProvInfo.color+"08",border:`1px solid ${selProvInfo.color}20`,borderRadius:10,padding:14,marginBottom:14,animation:"fi .2s"}}><div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,color:selProvInfo.color,marginBottom:6}}>SEND TO</div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}><span style={{fontWeight:700,fontSize:16}}>{selProvInfo.num}</span><button onClick={()=>navigator.clipboard?.writeText(selProvInfo.num.replace(/-/g,""))} style={{background:selProvInfo.color+"15",color:selProvInfo.color,border:"none",padding:"4px 12px",borderRadius:6,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"'DM Sans'"}}>Copy</button></div><div style={{fontSize:12,color:"#555"}}>Name: <strong style={{color:"#888"}}>{selProvInfo.acct||"VirtualBet GH"}</strong> • Amount: <strong style={{color:"#0B9635"}}>{fG(selPkgInfo.price)}</strong></div></div>)}
+                  <button className="ab" disabled={!upgSelProv} onClick={()=>setUpgStep(3)} style={{background:upgSelProv?"#D4AF37":"#151820",color:upgSelProv?"#000":"#444"}}>I've Sent Payment →</button>
+                  <button className="bb" onClick={()=>setUpgStep(1)}>← Back</button>
+                </div>
+              )}
+
+              {!upgSubmitted && upgStep===3 && selPkgInfo && (
+                <div style={{animation:"fi .2s"}}>
+                  <div style={{textAlign:"center",marginBottom:16}}><div style={{fontSize:32,marginBottom:4}}>📋</div><div className="mm-ti">Submit Proof</div><p className="mm-su">Enter your <strong style={{color:selProvInfo?.color}}>{selProvInfo?.name}</strong> transaction details</p></div>
+                  <div style={{marginBottom:14}}><label style={{display:"block",fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:5}}>REFERENCE / TRANSACTION ID</label><input className="inp" placeholder="e.g. 000012345678" value={upgRefNum} onChange={e=>setUpgRefNum(e.target.value)} /></div>
+                  <div style={{marginBottom:14}}><label style={{display:"block",fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:5}}>SENDER NAME</label><input className="inp" placeholder="Name on the transaction" value={upgSenderName} onChange={e=>setUpgSenderName(e.target.value)} /></div>
+                  <div style={{marginBottom:14}}>
+                    <label style={{display:"block",fontSize:10,fontWeight:700,letterSpacing:2,color:"#444",marginBottom:5}}>PAYMENT SCREENSHOT *</label>
+                    {!upgPreview ? (
+                      <label style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px 16px",border:"2px dashed #D4AF3740",borderRadius:12,cursor:"pointer",background:"rgba(212,175,55,.03)",transition:"all .2s"}}>
+                        <div style={{fontSize:28,marginBottom:4}}>📤</div>
+                        <div style={{fontSize:12,fontWeight:600,color:"#888"}}>Tap to upload screenshot</div>
+                        <div style={{fontSize:10,color:"#444",marginTop:2}}>PNG, JPG, WEBP — Max 10MB</div>
+                        <input type="file" accept="image/*" onChange={handleUpgScreenshot} style={{display:"none"}} />
+                      </label>
+                    ) : (
+                      <div style={{position:"relative",borderRadius:12,overflow:"hidden",border:"2px solid #D4AF3730"}}>
+                        <img src={upgPreview} alt="Payment proof" style={{width:"100%",maxHeight:180,objectFit:"contain",background:"#0B0D10"}} />
+                        <button type="button" onClick={()=>{setUpgScreenshot(null);setUpgPreview(null)}} style={{position:"absolute",top:6,right:6,width:26,height:26,borderRadius:"50%",background:"#E31725",border:"none",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+                        <div style={{padding:"6px 10px",background:"#D4AF3710",fontSize:11,fontWeight:600,color:"#D4AF37",textAlign:"center"}}>✓ Screenshot attached</div>
+                      </div>
+                    )}
+                  </div>
+                  {upgError && <div className="err">⚠ {upgError}</div>}
+                  <button className="ab" disabled={upgSubmitting||!upgRefNum.trim()||!upgScreenshot} onClick={submitUpgrade} style={{background:(upgRefNum.trim()&&upgScreenshot)?"#D4AF37":"#151820",color:(upgRefNum.trim()&&upgScreenshot)?"#000":"#444"}}>{upgSubmitting?"Submitting...":"Submit Upgrade Request"}</button>
+                  <button className="bb" onClick={()=>setUpgStep(2)}>← Back</button>
+                </div>
+              )}
+
+              {upgSubmitted && (
+                <div style={{textAlign:"center",animation:"fi .3s"}}>
+                  <div className="suc-ic">⬆️</div>
+                  <div className="mm-ti">Upgrade Requested!</div>
+                  <p className="mm-su">Your upgrade for {game.icon} {game.name} is being reviewed</p>
+                  <div className="suc-box">
+                    {[{l:"Game",v:`${game.icon} ${game.name}`},{l:"From",v:`${currentPkgInfo?.icon} ${currentPkgInfo?.name}`,c:currentPkgInfo?.color},{l:"To",v:`${selPkgInfo?.icon} ${selPkgInfo?.name}`,c:selPkgInfo?.color},{l:"Amount",v:fB(selPkgInfo?.price||0),c:"#0B9635"},{l:"Reference",v:upgRefNum,mono:true}].map(r=>(
+                      <div key={r.l} className="suc-r"><div className="suc-rl">{r.l}</div><div className="suc-rv" style={{color:r.c||"#F0F0F2",fontFamily:r.mono?"monospace":"inherit"}}>{r.v}</div></div>
+                    ))}
+                  </div>
+                  <p style={{fontSize:12,color:"#555",marginBottom:16}}>Your upgrade will be activated once payment is confirmed by admin.</p>
+                  <button className="ab" onClick={closeUpgrade} style={{background:"#D4AF37",color:"#000"}}>Done</button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* SUBSCRIBE MODAL */}
       {subModal && (
