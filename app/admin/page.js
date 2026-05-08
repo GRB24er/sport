@@ -45,6 +45,10 @@ export default function AdminDash() {
   const [chatUser,setChatUser] = useState(null);
   const [replyText,setReplyText] = useState("");
   const [broadcastForm,setBroadcastForm] = useState({subject:"",body:""});
+  const [dmForm,setDmForm] = useState({userId:"",subject:"",body:""});
+  const [dmSending,setDmSending] = useState(false);
+  const [dmSent,setDmSent] = useState(false);
+  const [dmError,setDmError] = useState("");
   const [settingsForm,setSettingsForm] = useState(null);
   const [saving,setSaving] = useState(false);
   const [resetting,setResetting] = useState(false);
@@ -284,6 +288,17 @@ export default function AdminDash() {
     load();
   };
 
+  const resetUserPkg = async (e, userId, userName) => {
+    e.stopPropagation();
+    if (!confirm(`Reset all game packages for ${userName}? They will be notified and need to re-subscribe.`)) return;
+    try {
+      const res = await fetch(`/api/admin/reset-packages/${userId}`, { method: "POST", headers: { "Content-Type": "application/json" } });
+      const data = await res.json();
+      if (res.ok) { load(); }
+      else { alert(`Error: ${data.error}`); }
+    } catch (e) { alert("Network error."); }
+  };
+
   const resetAllPackages = async () => {
     if (!confirm("⚠️ DANGER: This will reset ALL members' game packages to empty. They will need to re-subscribe. This cannot be undone. Are you absolutely sure?")) return;
     if (!confirm("Last chance — are you 100% sure you want to reset ALL packages?")) return;
@@ -305,6 +320,22 @@ export default function AdminDash() {
     if(data.settings) { setSettings(data.settings); setSettingsForm(data.settings); }
     setSaving(false);
   };
+  const sendIndividualMessage = async () => {
+    if (!dmForm.userId) { setDmError("Please select a user."); return; }
+    if (!dmForm.body.trim()) { setDmError("Message cannot be empty."); return; }
+    setDmError(""); setDmSending(true);
+    try {
+      const res = await fetch("/api/admin/message-user", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: dmForm.userId, subject: dmForm.subject, message: dmForm.body }),
+      });
+      const data = await res.json();
+      if (res.ok) { setDmSent(true); setDmForm({userId:"",subject:"",body:""}); setTimeout(()=>setDmSent(false), 4000); }
+      else { setDmError(data.error || "Failed to send."); }
+    } catch (e) { setDmError("Network error."); }
+    setDmSending(false);
+  };
+
   const sendBroadcast = async () => {
     if(!broadcastForm.body.trim()) return;
     setSending(true);
@@ -619,6 +650,7 @@ export default function AdminDash() {
                     <td style={{padding:"10px 8px",fontSize:11,color:"#444"}}>{tAgo(u.createdAt)}</td>
                     <td style={{padding:"10px 8px"}}><div style={{display:"flex",gap:4}}>
                       {u.status==="pending"&&<button onClick={e=>{e.stopPropagation();approve(u._id)}} style={btn("#0B9635")}>Approve</button>}
+                      <button onClick={e=>resetUserPkg(e,u._id,u.name)} style={{...btn("#D4AF37"),color:"#000"}} title="Reset this user's packages">🔄</button>
                       <button onClick={e=>{e.stopPropagation();remove(u._id)}} style={btn("#AE0C0E")}>Delete</button>
                     </div></td>
                   </tr>
@@ -1035,6 +1067,26 @@ export default function AdminDash() {
               <div style={{marginBottom:14}}><label style={{...lbl,display:"block",marginBottom:5}}>SUBJECT</label><input value={broadcastForm.subject} onChange={e=>setBroadcastForm(f=>({...f,subject:e.target.value}))} placeholder="e.g. System Update, New Feature" style={{width:"100%",padding:"12px 14px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:8,color:"#F0F0F2",fontSize:13,fontFamily:"'DM Sans'",outline:"none"}} /></div>
               <div style={{marginBottom:14}}><label style={{...lbl,display:"block",marginBottom:5}}>MESSAGE</label><textarea value={broadcastForm.body} onChange={e=>setBroadcastForm(f=>({...f,body:e.target.value}))} placeholder="Type your announcement..." style={{width:"100%",padding:"12px 14px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:8,color:"#F0F0F2",fontSize:13,fontFamily:"'DM Sans'",outline:"none",minHeight:100,resize:"vertical"}} /></div>
               <button onClick={sendBroadcast} disabled={sending||!broadcastForm.body.trim()} style={{...btn("#0B9635"),padding:"14px 24px",fontSize:14,opacity:!broadcastForm.body.trim()?.5:1,width:"100%"}}>{sending?"Sending...":"📢 Broadcast to "+approved.length+" Users"}</button>
+            </div>
+
+            {/* INDIVIDUAL MESSAGE */}
+            <div style={{...card,borderColor:"#D4AF3720",marginTop:20}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#D4AF37",marginBottom:4}}>💬 SEND INDIVIDUAL MESSAGE</div>
+              <p style={{fontSize:12,color:"#555",marginBottom:14,lineHeight:1.5}}>Send a private message directly to one specific user. They will see it in their notifications.</p>
+              <div style={{marginBottom:12}}>
+                <label style={{...lbl,display:"block",marginBottom:5}}>SELECT USER</label>
+                <select value={dmForm.userId} onChange={e=>{setDmForm(f=>({...f,userId:e.target.value}));setDmError("");}} style={{width:"100%",padding:"12px 14px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:8,color:dmForm.userId?"#F0F0F2":"#555",fontSize:13,fontFamily:"'DM Sans'",outline:"none",cursor:"pointer"}}>
+                  <option value="">-- Choose a user --</option>
+                  {users.filter(u=>u.status==="approved"&&!u.isBanned).sort((a,b)=>a.name.localeCompare(b.name)).map(u=>(
+                    <option key={u._id} value={u._id}>{u.name} ({u.phone})</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{marginBottom:12}}><label style={{...lbl,display:"block",marginBottom:5}}>SUBJECT (optional)</label><input value={dmForm.subject} onChange={e=>setDmForm(f=>({...f,subject:e.target.value}))} placeholder="e.g. Your Account, Payment Update" style={{width:"100%",padding:"12px 14px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:8,color:"#F0F0F2",fontSize:13,fontFamily:"'DM Sans'",outline:"none"}} /></div>
+              <div style={{marginBottom:12}}><label style={{...lbl,display:"block",marginBottom:5}}>MESSAGE</label><textarea value={dmForm.body} onChange={e=>setDmForm(f=>({...f,body:e.target.value}))} placeholder="Type your private message to this user..." style={{width:"100%",padding:"12px 14px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:8,color:"#F0F0F2",fontSize:13,fontFamily:"'DM Sans'",outline:"none",minHeight:90,resize:"vertical"}} /></div>
+              {dmError&&<div style={{background:"#E3172510",border:"1px solid #E3172530",borderRadius:8,padding:"10px 14px",fontSize:12,color:"#E31725",marginBottom:12}}>⚠ {dmError}</div>}
+              {dmSent&&<div style={{background:"#0B963510",border:"1px solid #0B963530",borderRadius:8,padding:"10px 14px",fontSize:12,color:"#0B9635",marginBottom:12}}>✅ Message sent successfully!</div>}
+              <button onClick={sendIndividualMessage} disabled={dmSending||!dmForm.userId||!dmForm.body.trim()} style={{...btn("#D4AF37"),color:"#000",padding:"14px 24px",fontSize:14,opacity:(!dmForm.userId||!dmForm.body.trim())?.5:1,width:"100%"}}>{dmSending?"Sending...":"💬 Send Private Message"}</button>
             </div>
 
             <div style={section}>PREVIOUS BROADCASTS</div>

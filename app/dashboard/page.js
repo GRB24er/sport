@@ -392,7 +392,7 @@ export default function Dashboard() {
           const activePkg = getGamePkg(g.id);
           const activePkgInfo = activePkg ? PKGS.find(x=>x.id===activePkg.package) : null;
           const PKG_ORDER = ["gold","platinum","diamond"];
-          const canUpgrade = activePkg && PKG_ORDER.indexOf(activePkg.package) < PKG_ORDER.length - 1 && !gameIsPending(g.id);
+          const canUpgrade = activePkg && PKG_ORDER.indexOf(activePkg.package) < PKG_ORDER.length - 1;
           return (
             <div key={g.id} className={`gc asu ad${i+1}`} onClick={()=>openSub(g)} style={{cursor:gameIsPending(g.id)?"default":"pointer"}}>
               <div className="gc-b" style={{background:g.bg}}>
