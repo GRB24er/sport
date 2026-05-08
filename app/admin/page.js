@@ -49,6 +49,8 @@ export default function AdminDash() {
   const [dmSending,setDmSending] = useState(false);
   const [dmSent,setDmSent] = useState(false);
   const [dmError,setDmError] = useState("");
+  const [dmSearch,setDmSearch] = useState("");
+  const [dmDropOpen,setDmDropOpen] = useState(false);
   const [settingsForm,setSettingsForm] = useState(null);
   const [saving,setSaving] = useState(false);
   const [resetting,setResetting] = useState(false);
@@ -1074,13 +1076,61 @@ export default function AdminDash() {
               <div style={{fontSize:12,fontWeight:700,color:"#D4AF37",marginBottom:4}}>💬 SEND INDIVIDUAL MESSAGE</div>
               <p style={{fontSize:12,color:"#555",marginBottom:14,lineHeight:1.5}}>Send a private message directly to one specific user. They will see it in their notifications.</p>
               <div style={{marginBottom:12}}>
-                <label style={{...lbl,display:"block",marginBottom:5}}>SELECT USER</label>
-                <select value={dmForm.userId} onChange={e=>{setDmForm(f=>({...f,userId:e.target.value}));setDmError("");}} style={{width:"100%",padding:"12px 14px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:8,color:dmForm.userId?"#F0F0F2":"#555",fontSize:13,fontFamily:"'DM Sans'",outline:"none",cursor:"pointer"}}>
-                  <option value="">-- Choose a user --</option>
-                  {users.filter(u=>u.status==="approved"&&!u.isBanned).sort((a,b)=>a.name.localeCompare(b.name)).map(u=>(
-                    <option key={u._id} value={u._id}>{u.name} ({u.phone})</option>
-                  ))}
-                </select>
+                <label style={{...lbl,display:"block",marginBottom:5}}>SEARCH & SELECT USER</label>
+                {(()=>{
+                  const dmFiltered = users.filter(u=>u.status==="approved"&&!u.isBanned).filter(u=>{
+                    const q = dmSearch.toLowerCase();
+                    return !q || u.name?.toLowerCase().includes(q) || u.phone?.includes(q) || u.email?.toLowerCase().includes(q);
+                  }).sort((a,b)=>a.name.localeCompare(b.name));
+                  const selectedUser = dmForm.userId ? users.find(u=>u._id===dmForm.userId) : null;
+                  return (
+                    <div style={{position:"relative"}}>
+                      {/* Search input */}
+                      <div style={{position:"relative"}}>
+                        <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:14,color:"#444",pointerEvents:"none"}}>🔍</span>
+                        <input
+                          value={dmSearch}
+                          onChange={e=>{setDmSearch(e.target.value);setDmDropOpen(true);if(!e.target.value){setDmForm(f=>({...f,userId:""}));}}}
+                          onFocus={()=>setDmDropOpen(true)}
+                          placeholder={selectedUser?`${selectedUser.name} (${selectedUser.phone})`:`Search by name or phone...`}
+                          style={{width:"100%",padding:"12px 36px 12px 36px",background:"#0B0D10",border:`1px solid ${selectedUser?"#D4AF37":"#1E2028"}`,borderRadius:8,color:"#F0F0F2",fontSize:13,fontFamily:"'DM Sans'",outline:"none",boxSizing:"border-box"}}
+                        />
+                        {(dmSearch||selectedUser)&&(
+                          <button onClick={()=>{setDmSearch("");setDmForm(f=>({...f,userId:""}));setDmDropOpen(false);}} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:16,lineHeight:1}}>✕</button>
+                        )}
+                      </div>
+                      {/* Selected user badge */}
+                      {selectedUser&&!dmDropOpen&&(
+                        <div style={{marginTop:6,display:"inline-flex",alignItems:"center",gap:8,background:"#D4AF3715",border:"1px solid #D4AF3730",borderRadius:8,padding:"6px 12px"}}>
+                          <div style={{width:24,height:24,borderRadius:6,background:"#D4AF37",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:11,color:"#000"}}>{selectedUser.name?.slice(0,2).toUpperCase()}</div>
+                          <div><div style={{fontWeight:700,fontSize:13,color:"#D4AF37"}}>{selectedUser.name}</div><div style={{fontSize:10,color:"#555"}}>{selectedUser.phone}</div></div>
+                          <span style={{fontSize:10,color:"#0B9635",fontWeight:700}}>✓ Selected</span>
+                        </div>
+                      )}
+                      {/* Dropdown results */}
+                      {dmDropOpen&&(
+                        <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#12141A",border:"1px solid #1E2028",borderRadius:10,zIndex:100,maxHeight:220,overflowY:"auto",marginTop:4,boxShadow:"0 8px 24px rgba(0,0,0,.5)"}}>
+                          {dmFiltered.length===0?(
+                            <div style={{padding:"16px",textAlign:"center",color:"#444",fontSize:12}}>No users found</div>
+                          ):(
+                            dmFiltered.map(u=>(
+                              <div key={u._id} onClick={()=>{setDmForm(f=>({...f,userId:u._id}));setDmSearch("");setDmDropOpen(false);setDmError("");}} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",cursor:"pointer",borderBottom:"1px solid #1E202840",background:dmForm.userId===u._id?"#D4AF3710":"transparent",transition:"background .1s"}} onMouseEnter={e=>e.currentTarget.style.background="#D4AF3710"} onMouseLeave={e=>e.currentTarget.style.background=dmForm.userId===u._id?"#D4AF3710":"transparent"}>
+                                <div style={{width:32,height:32,borderRadius:8,background:"#1E2028",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12,color:"#D4AF37",flexShrink:0}}>{u.name?.slice(0,2).toUpperCase()}</div>
+                                <div style={{flex:1,minWidth:0}}>
+                                  <div style={{fontWeight:700,fontSize:13,color:"#F0F0F2",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{u.name}</div>
+                                  <div style={{fontSize:11,color:"#555"}}>{u.phone}{u.email?` • ${u.email}`:""}</div>
+                                </div>
+                                {dmForm.userId===u._id&&<span style={{color:"#D4AF37",fontSize:14}}>✓</span>}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
+                      {/* Click outside to close */}
+                      {dmDropOpen&&<div style={{position:"fixed",inset:0,zIndex:99}} onClick={()=>setDmDropOpen(false)} />}
+                    </div>
+                  );
+                })()}
               </div>
               <div style={{marginBottom:12}}><label style={{...lbl,display:"block",marginBottom:5}}>SUBJECT (optional)</label><input value={dmForm.subject} onChange={e=>setDmForm(f=>({...f,subject:e.target.value}))} placeholder="e.g. Your Account, Payment Update" style={{width:"100%",padding:"12px 14px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:8,color:"#F0F0F2",fontSize:13,fontFamily:"'DM Sans'",outline:"none"}} /></div>
               <div style={{marginBottom:12}}><label style={{...lbl,display:"block",marginBottom:5}}>MESSAGE</label><textarea value={dmForm.body} onChange={e=>setDmForm(f=>({...f,body:e.target.value}))} placeholder="Type your private message to this user..." style={{width:"100%",padding:"12px 14px",background:"#0B0D10",border:"1px solid #1E2028",borderRadius:8,color:"#F0F0F2",fontSize:13,fontFamily:"'DM Sans'",outline:"none",minHeight:90,resize:"vertical"}} /></div>
